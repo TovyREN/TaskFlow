@@ -6,8 +6,7 @@
 3. [Frontend Architecture](#frontend-architecture)
 4. [Backend Architecture](#backend-architecture)
 5. [Coding Standards & Style Guide](#coding-standards--style-guide)
-6. [Naming Conventions](#naming-conventions)
-7. [Best Practices](#best-practices)
+6. [Best Practices](#best-practices)
 
 ---
 

@@ -1,26 +1,87 @@
--- Activer l'extension pour générer des IDs
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- ============================================
+-- SUPPRESSION DES ANCIENNES STRUCTURES
+-- ============================================
 
--- Fonction pour générer des CUIDs (compatible avec Prisma)
+-- Supprimer les triggers
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
+DROP TRIGGER IF EXISTS update_boards_updated_at ON boards;
+DROP TRIGGER IF EXISTS update_lists_updated_at ON lists;
+DROP TRIGGER IF EXISTS update_cards_updated_at ON cards;
+DROP TRIGGER IF EXISTS update_comments_updated_at ON comments;
+
+-- Supprimer les anciennes tables (dans l'ordre inverse des dépendances)
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS attachments CASCADE;
+DROP TABLE IF EXISTS checklist_items CASCADE;
+DROP TABLE IF EXISTS checklists CASCADE;
+DROP TABLE IF EXISTS card_labels CASCADE;
+DROP TABLE IF EXISTS labels CASCADE;
+DROP TABLE IF EXISTS card_assignees CASCADE;
+DROP TABLE IF EXISTS cards CASCADE;
+DROP TABLE IF EXISTS lists CASCADE;
+DROP TABLE IF EXISTS board_members CASCADE;
+DROP TABLE IF EXISTS boards CASCADE;
+DROP TABLE IF EXISTS user_profiles CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
+-- Supprimer les anciennes fonctions
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS update_updated_at_column() CASCADE;
+DROP FUNCTION IF EXISTS generate_cuid() CASCADE;
+
+-- ============================================
+-- CRÉATION DES EXTENSIONS ET FONCTIONS
+-- ============================================
+
+-- Activer les extensions
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Fonction pour générer des CUIDs (compatible Prisma)
 CREATE OR REPLACE FUNCTION generate_cuid() RETURNS TEXT AS $$
 DECLARE
   timestamp TEXT;
   counter TEXT;
   random_part TEXT;
 BEGIN
-  timestamp := LPAD(TO_HEX(EXTRACT(EPOCH FROM NOW())::BIGINT), 8, '0');
+  timestamp := LPAD(TO_HEX(FLOOR(EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT), 12, '0');
   counter := LPAD(TO_HEX(FLOOR(RANDOM() * 65536)::INT), 4, '0');
   random_part := ENCODE(gen_random_bytes(12), 'hex');
-  RETURN 'c' || timestamp || counter || random_part;
+  RETURN 'c' || SUBSTRING(timestamp FROM 1 FOR 8) || counter || SUBSTRING(random_part FROM 1 FOR 12);
 END;
 $$ LANGUAGE plpgsql;
 
--- Table des utilisateurs
-CREATE TABLE users (
-  id TEXT PRIMARY KEY DEFAULT generate_cuid(),
-  email TEXT UNIQUE NOT NULL,
+-- Fonction pour mettre à jour updated_at automatiquement
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fonction pour créer automatiquement un profil lors de l'inscription
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.user_profiles (id, name, avatar, created_at, updated_at)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'name', NULL),
+    COALESCE(NEW.raw_user_meta_data->>'avatar', NULL),
+    NOW(),
+    NOW()
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Table user_profiles (complément de auth.users)
+-- Supabase Auth gère l'authentification, cette table stocke les infos supplémentaires
+CREATE TABLE user_profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT,
-  password TEXT NOT NULL,
   avatar TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -32,19 +93,19 @@ CREATE TABLE boards (
   name TEXT NOT NULL,
   description TEXT,
   background TEXT,
-  visibility TEXT NOT NULL DEFAULT 'private',
+  visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('private', 'public', 'team')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+  owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
 -- Table des membres de board
 CREATE TABLE board_members (
   id TEXT PRIMARY KEY DEFAULT generate_cuid(),
-  role TEXT NOT NULL DEFAULT 'member',
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'viewer')),
   joined_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   board_id TEXT NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   UNIQUE(board_id, user_id)
 );
 
@@ -74,7 +135,7 @@ CREATE TABLE cards (
 CREATE TABLE card_assignees (
   id TEXT PRIMARY KEY DEFAULT generate_cuid(),
   card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   UNIQUE(card_id, user_id)
 );
 
@@ -128,7 +189,7 @@ CREATE TABLE comments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE
 );
 
 -- Index pour améliorer les performances
@@ -149,18 +210,15 @@ CREATE INDEX idx_attachments_card ON attachments(card_id);
 CREATE INDEX idx_comments_card ON comments(card_id);
 CREATE INDEX idx_comments_user ON comments(user_id);
 
--- Fonction pour mettre à jour updated_at automatiquement
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+-- Trigger pour créer automatiquement user_profiles lors de l'inscription
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION public.handle_new_user();
 
 -- Triggers pour updated_at
-CREATE TRIGGER update_users_updated_at 
-  BEFORE UPDATE ON users 
+CREATE TRIGGER update_user_profiles_updated_at 
+  BEFORE UPDATE ON user_profiles 
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 

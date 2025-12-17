@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 export default function Home() {
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700">
-      {/* Navigation */}
       <nav className="flex items-center justify-between px-6 py-4">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded bg-white/20 backdrop-blur-sm" />
@@ -25,7 +24,6 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Hero Section */}
       <main className="flex flex-1 flex-col items-center justify-center px-6 text-center">
         <div className="max-w-4xl">
           <h1 className="mb-6 text-5xl font-bold text-white sm:text-6xl lg:text-7xl">
@@ -54,7 +52,6 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Features */}
           <div className="mt-20 grid gap-8 sm:grid-cols-3">
             <div className="rounded-lg bg-white/10 p-6 backdrop-blur-sm">
               <div className="mb-4 flex justify-center">
@@ -131,7 +128,6 @@ export default function Home() {
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-white/10 px-6 py-4">
         <div className="flex flex-col items-center justify-between gap-4 text-sm text-white/60 sm:flex-row">
           <p>© 2024 Trello Clone. Tous droits réservés.</p>

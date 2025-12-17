@@ -4,6 +4,7 @@ export const registerSchema = z.object({
   email: z.string().email('Email invalide'),
   name: z.string().min(2, 'Le nom doit contenir au moins 2 caractères').optional(),
   password: z.string().min(6, 'Le mot de passe doit contenir au moins 6 caractères'),
+  // ADD better regex for strong password if needed
 });
 
 export const loginSchema = z.object({

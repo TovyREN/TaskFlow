@@ -128,7 +128,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="border-t border-white/10 px-6 py-4">
+      {/* <footer className="border-t border-white/10 px-6 py-4">
         <div className="flex flex-col items-center justify-between gap-4 text-sm text-white/60 sm:flex-row">
           <p>© 2024 Trello Clone. Tous droits réservés.</p>
           <div className="flex gap-6">
@@ -143,7 +143,7 @@ export default function Home() {
             </Link>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 }

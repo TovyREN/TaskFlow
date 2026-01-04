@@ -17,7 +17,11 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 export { generateToken, verifyToken };
 
 // Nouvelles fonctions pour gérer l'authentification avec SQLite
-export async function registerUser(email: string, password: string, name: string): Promise<{ user: User; token: string }> {
+export async function registerUser(
+  email: string,
+  password: string,
+  name?: string | null
+): Promise<{ user: User; token: string }> {
   // Vérifier si l'utilisateur existe déjà
   const existingUser = userDb.findByEmail(email);
   if (existingUser) {
@@ -28,7 +32,7 @@ export async function registerUser(email: string, password: string, name: string
   const passwordHash = await hashPassword(password);
 
   // Créer l'utilisateur
-  const user = userDb.create(email, passwordHash, name);
+  const user = userDb.create(email, passwordHash, name ?? null);
 
   // Générer un token
   const token = generateToken(user.id);

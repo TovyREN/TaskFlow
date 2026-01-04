@@ -2,6 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { listDb, cardDb } from '@/db/list-db';
+import { labelDb } from '@/db/label-db';
+import { cardAssigneeDb } from '@/db/card-assignee-db';
+import { commentDb } from '@/db/comment-db';
+import { checklistDb } from '@/db/checklist-db';
 import type { List, Card } from '@/types/list';
 
 export async function getBoardLists(boardId: string): Promise<List[]> {
@@ -81,11 +85,46 @@ export async function deleteList(listId: string): Promise<void> {
 export async function getListCards(listId: string): Promise<Card[]> {
   try {
     const cards = cardDb.findByListId(listId);
+
+    const cardIds = cards.map((c) => c.id);
+
+    const labelsByCard = new Map<string, Array<{ id: string; name: string; color: string }>>();
+    for (const row of labelDb.findByCardIds(cardIds)) {
+      const arr = labelsByCard.get(row.card_id) || [];
+      arr.push({
+        id: row.label.id,
+        name: row.label.name,
+        color: row.label.color,
+      });
+      labelsByCard.set(row.card_id, arr);
+    }
+
+    const assigneesByCard = new Map<string, Array<{ id: string; email: string; name: string | null; avatar: string | null }>>();
+    for (const row of cardAssigneeDb.findByCardIds(cardIds)) {
+      const arr = assigneesByCard.get(row.card_id) || [];
+      arr.push({ id: row.id, email: row.email, name: row.name, avatar: row.avatar });
+      assigneesByCard.set(row.card_id, arr);
+    }
+
+    const commentsCountByCard = new Map<string, number>();
+    for (const row of commentDb.countByCardIds(cardIds)) {
+      commentsCountByCard.set(row.card_id, row.count);
+    }
+
+    const checklistByCard = new Map<string, { total: number; completed: number }>();
+    for (const row of checklistDb.getSummaryByCardIds(cardIds)) {
+      checklistByCard.set(row.card_id, { total: row.total, completed: row.completed });
+    }
+
     return cards.map(card => ({
       ...card,
       due_date: card.due_date?.toISOString() || null,
       created_at: card.created_at.toISOString(),
       updated_at: card.updated_at.toISOString(),
+      labels: labelsByCard.get(card.id) || [],
+      assignees: assigneesByCard.get(card.id) || [],
+      commentsCount: commentsCountByCard.get(card.id) || 0,
+      checklist: checklistByCard.get(card.id) || { total: 0, completed: 0 },
     })) as any;
   } catch (error) {
     console.error('Error in getListCards:', error);
@@ -119,10 +158,19 @@ export async function createCard(listId: string, title: string): Promise<Card> {
 
 export async function updateCard(
   cardId: string,
-  data: { title?: string; description?: string }
+  data: { title?: string; description?: string; due_date?: string | null }
 ): Promise<Card | null> {
   try {
-    const card = cardDb.update(cardId, data);
+    const updateData: any = {
+      title: data.title,
+      description: data.description,
+    };
+
+    if (data.due_date !== undefined) {
+      updateData.due_date = data.due_date ? new Date(data.due_date) : null;
+    }
+
+    const card = cardDb.update(cardId, updateData);
     
     if (!card) return null;
 

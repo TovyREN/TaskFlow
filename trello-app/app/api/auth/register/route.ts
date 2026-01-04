@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     const { user, token } = await registerUser(
       validatedData.email,
       validatedData.password,
-      validatedData.name
+      validatedData.name ?? null
     );
     
     // Créer la réponse avec le cookie de session

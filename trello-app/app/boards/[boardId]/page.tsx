@@ -5,6 +5,7 @@ import { getBoard } from '@/actions/board-actions';
 import { getBoardLists, getListCards } from '@/actions/list-actions';
 import { verifyToken } from '@/lib/jwt';
 import { BoardContent } from '@/components/board/board-content';
+import { BoardMenu } from '@/components/board/board-menu';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -79,9 +80,7 @@ export default async function BoardPage({ params }: BoardPageProps) {
               <button className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors">
                 Partager
               </button>
-              <button className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors">
-                Menu
-              </button>
+              <BoardMenu boardId={boardId} />
             </div>
           </div>
           

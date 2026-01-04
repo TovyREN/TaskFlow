@@ -7,6 +7,9 @@ import {
   DragOverlay, 
   DragStartEvent, 
   DragOverEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
   type CollisionDetection,
   closestCenter,
   pointerWithin,
@@ -163,6 +166,13 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
 
   const listIds = items.map(item => item.list.id);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      // Prevent simple clicks from activating drag
+      activationConstraint: { distance: 6 },
+    })
+  );
+
   // Collision detection personnalisée:
   // - Pendant le drag d'une liste, on ne considère QUE les droppables de type "list".
   //   Sinon "over" devient une carte, et le drop ne déclenche jamais le reorder des listes.
@@ -220,6 +230,7 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
 
   return (
     <DndContext
+      sensors={sensors}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -231,6 +242,7 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
             {items.map(({ list, cards }) => (
               <BoardList 
                 key={list.id} 
+                boardId={boardId}
                 list={list} 
                 cards={cards}
                 isOverlay={overId === list.id}

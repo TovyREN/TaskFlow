@@ -198,7 +198,7 @@ export const cardDb = {
 
   update(
     id: string,
-    data: Partial<Pick<Card, 'title' | 'description' | 'position' | 'list_id'>>
+    data: Partial<Pick<Card, 'title' | 'description' | 'position' | 'list_id' | 'due_date'>>
   ): Card | null {
     const updates: string[] = [];
     const values: any[] = [];
@@ -221,6 +221,11 @@ export const cardDb = {
     if (data.list_id !== undefined) {
       updates.push('list_id = ?');
       values.push(data.list_id);
+    }
+
+    if (data.due_date !== undefined) {
+      updates.push('due_date = ?');
+      values.push(data.due_date ? Math.floor(data.due_date.getTime() / 1000) : null);
     }
 
     if (updates.length === 0) {

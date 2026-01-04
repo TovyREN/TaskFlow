@@ -1,52 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/config/supabase';
+import { registerUser } from '@/lib/auth';
 import { registerSchema } from '@/lib/validations/auth';
 import type { ApiError } from '@/types/auth';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
-    if (!supabase) {
-      return NextResponse.json<ApiError>(
-        { error: 'Configuration Supabase manquante' },
-        { status: 500 }
-      );
-    }
-
     const body = await request.json();
     const validatedData = registerSchema.parse(body);
     
-    // Créer l'utilisateur avec Supabase Auth
-    // Le trigger 'on_auth_user_created' créera automatiquement le profil
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: validatedData.email,
-      password: validatedData.password,
-      options: {
-        data: {
-          name: validatedData.name,
-        },
+    // Créer l'utilisateur
+    const { user, token } = await registerUser(
+      validatedData.email,
+      validatedData.password,
+      validatedData.name
+    );
+    
+    // Créer la réponse avec le cookie de session
+    const response = NextResponse.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
       },
+      session: {
+        access_token: token,
+      },
+    }, { status: 201 });
+    
+    // Définir le cookie
+    response.cookies.set('sb-access-token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 jours
+      path: '/',
     });
     
-    if (authError) {
+    return response;
+  } catch (error) {
+    console.error('Register error:', error);
+    
+    if (error instanceof Error) {
       return NextResponse.json<ApiError>(
-        { error: authError.message },
+        { error: error.message },
         { status: 400 }
       );
     }
-
-    if (!authData.user) {
-      return NextResponse.json<ApiError>(
-        { error: 'Échec de la création de l\'utilisateur' },
-        { status: 500 }
-      );
-    }
     
-    return NextResponse.json({
-      user: authData.user,
-      session: authData.session,
-    }, { status: 201 });
-  } catch (error) {
-    console.error('Register error:', error);
     return NextResponse.json<ApiError>(
       { error: 'Une erreur est survenue lors de l\'inscription' },
       { status: 500 }

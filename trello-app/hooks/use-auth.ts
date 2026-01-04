@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabaseClient } from '@/config/supabase';
 import type { LoginInput, RegisterInput } from '@/lib/validations/auth';
 
 export function useAuth() {
@@ -17,23 +16,22 @@ export function useAuth() {
 
       console.log('🔐 Tentative de connexion avec:', data.email);
 
-      const { data: responseData, error: signInError } = await supabaseClient.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
       });
+
+      const responseData = await response.json();
 
       console.log('📝 Réponse de connexion:', responseData);
 
-      if (signInError) {
-        console.error('🚨 Erreur:', signInError.message);
-        setError('Email ou mot de passe incorrect');
+      if (!response.ok) {
+        console.error('🚨 Erreur:', responseData.error);
+        setError(responseData.error || 'Email ou mot de passe incorrect');
         return false;
-      }
-
-      // Stocker le token dans les cookies pour le middleware
-      if (responseData.session) {
-        document.cookie = `sb-access-token=${responseData.session.access_token}; path=/; max-age=3600`;
-        document.cookie = `sb-refresh-token=${responseData.session.refresh_token}; path=/; max-age=2592000`;
       }
 
       console.log('✅ Connexion réussie! User ID:', responseData.user?.id);
@@ -57,22 +55,21 @@ export function useAuth() {
 
       console.log('📝 Inscription:', { email: data.email, name: data.name });
 
-      const { data: responseData, error: signUpError } = await supabaseClient.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            name: data.name || null,
-          },
-          emailRedirectTo: undefined,
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(data),
       });
+
+      const responseData = await response.json();
 
       console.log('📦 Réponse inscription:', responseData);
 
-      if (signUpError) {
-        console.error('🚨 Erreur:', signUpError.message);
-        setError(signUpError.message);
+      if (!response.ok) {
+        console.error('🚨 Erreur:', responseData.error);
+        setError(responseData.error);
         return false;
       }
 
@@ -80,12 +77,6 @@ export function useAuth() {
         console.warn('⚠️ Pas d\'utilisateur créé!');
         setError('Erreur lors de la création du compte');
         return false;
-      }
-
-      // Stocker le token dans les cookies
-      if (responseData.session) {
-        document.cookie = `sb-access-token=${responseData.session.access_token}; path=/; max-age=3600`;
-        document.cookie = `sb-refresh-token=${responseData.session.refresh_token}; path=/; max-age=2592000`;
       }
 
       console.log('✅ Compte créé! User ID:', responseData.user.id);
@@ -106,11 +97,9 @@ export function useAuth() {
     try {
       setIsLoading(true);
       console.log('👋 Déconnexion...');
-      await supabaseClient.auth.signOut();
       
       // Supprimer les cookies
       document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'sb-refresh-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       
       console.log('✅ Déconnexion réussie');
       router.push('/auth/login');

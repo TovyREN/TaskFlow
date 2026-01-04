@@ -8,18 +8,21 @@ export async function middleware(req: NextRequest) {
   const isBoardsPage = req.nextUrl.pathname.startsWith('/boards');
   const isHomePage = req.nextUrl.pathname === '/';
 
+  // Simple vérification de la présence du token (la vraie validation est faite côté serveur)
+  const hasToken = !!token && token.length > 0;
+
   // Si pas de token et tentative d'accès à /boards
-  if (!token && isBoardsPage) {
+  if (!hasToken && isBoardsPage) {
     return NextResponse.redirect(new URL('/auth/login', req.url));
   }
 
-  // Si token existe et sur page auth, rediriger vers /boards
-  if (token && isAuthPage) {
+  // Si token présent et sur page auth, rediriger vers /boards
+  if (hasToken && isAuthPage) {
     return NextResponse.redirect(new URL('/boards', req.url));
   }
 
-  // Si token existe et sur homepage, rediriger vers /boards
-  if (token && isHomePage) {
+  // Si token présent et sur homepage, rediriger vers /boards
+  if (hasToken && isHomePage) {
     return NextResponse.redirect(new URL('/boards', req.url));
   }
 

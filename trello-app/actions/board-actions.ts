@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
-import { supabaseClient } from '@/config/supabase';
+import { boardDb } from '@/db/board-db';
+import { verifyToken } from '@/lib/jwt';
 import { createBoardSchema, type CreateBoardInput } from '@/lib/validations/board';
 import type { Board } from '@/types/board';
 
@@ -13,8 +14,8 @@ async function getUserIdFromCookies(): Promise<string | null> {
   if (!token) return null;
   
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.sub;
+    const payload = verifyToken(token);
+    return payload?.userId || null;
   } catch {
     return null;
   }
@@ -22,18 +23,12 @@ async function getUserIdFromCookies(): Promise<string | null> {
 
 export async function getUserBoards(userId: string): Promise<Board[]> {
   try {
-    const { data: boards, error } = await supabaseClient
-      .from('boards')
-      .select('*')
-      .eq('owner_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching boards:', error);
-      return [];
-    }
-
-    return boards || [];
+    const boards = boardDb.findByOwnerId(userId);
+    return boards.map(board => ({
+      ...board,
+      created_at: board.created_at.toISOString(),
+      updated_at: board.updated_at.toISOString(),
+    })) as any;
   } catch (error) {
     console.error('Error in getUserBoards:', error);
     return [];
@@ -51,25 +46,21 @@ export async function createBoard(input: CreateBoardInput): Promise<Board> {
     const validated = createBoardSchema.parse(input);
 
     // Create board
-    const { data: board, error } = await supabaseClient
-      .from('boards')
-      .insert({
-        name: validated.name,
-        description: validated.description || null,
-        background: validated.background || null,
-        visibility: validated.visibility || 'private',
-        owner_id: userId,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating board:', error);
-      throw new Error('Failed to create board');
-    }
+    const board = boardDb.create(
+      validated.name,
+      userId,
+      validated.description || null,
+      validated.background || null,
+      validated.visibility || 'private'
+    );
 
     revalidatePath('/boards');
-    return board;
+    
+    return {
+      ...board,
+      created_at: board.created_at.toISOString(),
+      updated_at: board.updated_at.toISOString(),
+    } as any;
   } catch (error) {
     console.error('Error in createBoard:', error);
     throw error;
@@ -78,18 +69,15 @@ export async function createBoard(input: CreateBoardInput): Promise<Board> {
 
 export async function getBoard(boardId: string): Promise<Board | null> {
   try {
-    const { data: board, error } = await supabaseClient
-      .from('boards')
-      .select('*')
-      .eq('id', boardId)
-      .single();
+    const board = boardDb.findById(boardId);
+    
+    if (!board) return null;
 
-    if (error) {
-      console.error('Error fetching board:', error);
-      return null;
-    }
-
-    return board;
+    return {
+      ...board,
+      created_at: board.created_at.toISOString(),
+      updated_at: board.updated_at.toISOString(),
+    } as any;
   } catch (error) {
     console.error('Error in getBoard:', error);
     return null;
@@ -106,21 +94,24 @@ export async function updateBoard(
       throw new Error('Unauthorized');
     }
 
-    const { data: board, error } = await supabaseClient
-      .from('boards')
-      .update(data)
-      .eq('id', boardId)
-      .eq('owner_id', userId)
-      .select()
-      .single();
+    const board = boardDb.update(boardId, {
+      name: data.name,
+      description: data.description,
+      background: data.background,
+      visibility: data.visibility,
+    });
 
-    if (error) {
-      console.error('Error updating board:', error);
-      throw new Error('Failed to update board');
+    if (!board) {
+      throw new Error('Board not found or unauthorized');
     }
 
     revalidatePath(`/boards/${boardId}`);
-    return board;
+    
+    return {
+      ...board,
+      created_at: board.created_at.toISOString(),
+      updated_at: board.updated_at.toISOString(),
+    } as any;
   } catch (error) {
     console.error('Error in updateBoard:', error);
     throw error;
@@ -134,14 +125,9 @@ export async function deleteBoard(boardId: string): Promise<void> {
       throw new Error('Unauthorized');
     }
 
-    const { error } = await supabaseClient
-      .from('boards')
-      .delete()
-      .eq('id', boardId)
-      .eq('owner_id', userId);
+    const deleted = boardDb.delete(boardId);
 
-    if (error) {
-      console.error('Error deleting board:', error);
+    if (!deleted) {
       throw new Error('Failed to delete board');
     }
 

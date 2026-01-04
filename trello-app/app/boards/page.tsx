@@ -5,6 +5,7 @@ import { BoardsList } from '@/components/board/boards-list';
 import { CreateBoardButton } from '@/components/board/create-board-button';
 import { LoadingSpinner } from '@/components/shared/loading';
 import { getUserBoards } from '@/actions/board-actions';
+import { verifyToken } from '@/lib/jwt';
 
 export default async function BoardsPage() {
   // Vérifier l'authentification via les cookies
@@ -15,14 +16,13 @@ export default async function BoardsPage() {
     redirect('/auth/login');
   }
 
-  // Décoder le token pour obtenir l'userId (JWT)
-  let userId: string;
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    userId = payload.sub;
-  } catch {
+  // Vérifier et décoder le token JWT
+  const payload = verifyToken(token);
+  if (!payload) {
     redirect('/auth/login');
   }
+  
+  const userId = payload.userId;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">

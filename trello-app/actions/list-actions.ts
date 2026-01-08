@@ -217,13 +217,86 @@ export async function moveCard(
     const card = cardDb.findById(cardId);
     if (!card) throw new Error('Card not found');
 
-    const oldList = listDb.findById(card.list_id);
-    
-    cardDb.update(cardId, { list_id: targetListId, position: newPosition });
+    const oldListId = card.list_id;
+    const oldList = listDb.findById(oldListId);
+    const targetList = listDb.findById(targetListId);
 
-    if (oldList) {
-      revalidatePath(`/boards/${oldList.board_id}`);
+    if (!targetList) {
+      throw new Error('Target list not found');
     }
+
+    const boardId = (oldList || targetList).board_id;
+
+    type CardUpdateData = Parameters<typeof cardDb.update>[1];
+
+    // IMPORTANT: toujours réindexer toutes les cartes concernées.
+    // Sinon plusieurs cartes partagent la même position et le rendu serveur
+    // peut revenir à l'ordre initial après l'action.
+    if (oldListId === targetListId) {
+      const cards = cardDb.findByListId(targetListId);
+      const oldIndex = cards.findIndex((c) => c.id === cardId);
+
+      if (oldIndex === -1) {
+        throw new Error('Card not found in list');
+      }
+
+      const clampedIndex = Math.max(0, Math.min(newPosition, cards.length - 1));
+      if (oldIndex === clampedIndex) {
+        return;
+      }
+
+      const reordered = [...cards];
+      const [moved] = reordered.splice(oldIndex, 1);
+      reordered.splice(clampedIndex, 0, moved);
+
+      for (let index = 0; index < reordered.length; index++) {
+        const current = reordered[index];
+        if (current.position !== index) {
+          cardDb.update(current.id, { position: index });
+        }
+      }
+    } else {
+      const sourceCards = cardDb.findByListId(oldListId);
+      const targetCards = cardDb.findByListId(targetListId);
+
+      const sourceIndex = sourceCards.findIndex((c) => c.id === cardId);
+      if (sourceIndex === -1) {
+        throw new Error('Card not found in source list');
+      }
+
+      const [moved] = sourceCards.splice(sourceIndex, 1);
+      const clampedIndex = Math.max(0, Math.min(newPosition, targetCards.length));
+      targetCards.splice(clampedIndex, 0, { ...moved, list_id: targetListId });
+
+      // Mettre à jour les positions de la liste source
+      for (let index = 0; index < sourceCards.length; index++) {
+        const current = sourceCards[index];
+        if (current.position !== index) {
+          cardDb.update(current.id, { position: index });
+        }
+      }
+
+      // Mettre à jour les positions (et list_id) de la liste cible
+      for (let index = 0; index < targetCards.length; index++) {
+        const current = targetCards[index];
+        const updateData: CardUpdateData = {};
+
+        // Forcer l'update de list_id pour la carte déplacée
+        if (current.id === cardId) {
+          updateData.list_id = targetListId;
+        }
+
+        if (current.position !== index) {
+          updateData.position = index;
+        }
+
+        if (updateData.list_id !== undefined || updateData.position !== undefined) {
+          cardDb.update(current.id, updateData);
+        }
+      }
+    }
+
+    revalidatePath(`/boards/${boardId}`);
   } catch (error) {
     console.error('Error in moveCard:', error);
     throw error;

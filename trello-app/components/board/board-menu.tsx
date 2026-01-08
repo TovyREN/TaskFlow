@@ -2,8 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { getBoard, updateBoard } from '@/actions/board-actions';
 import { createBoardLabel } from '@/actions/card-actions';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
 
 interface BoardMenuProps {
   boardId: string;
@@ -15,6 +18,12 @@ export function BoardMenu({ boardId }: BoardMenuProps) {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [isEditBoardOpen, setIsEditBoardOpen] = useState(false);
+  const [isSavingBoard, setIsSavingBoard] = useState(false);
+  const [boardName, setBoardName] = useState('');
+  const [boardDescription, setBoardDescription] = useState('');
+  const [boardBackground, setBoardBackground] = useState('');
 
   const [newLabelName, setNewLabelName] = useState('');
   const [newLabelColor, setNewLabelColor] = useState<LabelColor>('green');
@@ -59,6 +68,44 @@ export function BoardMenu({ boardId }: BoardMenuProps) {
     }
   };
 
+  const openEditBoard = async () => {
+    setIsOpen(false);
+    setIsEditBoardOpen(true);
+    setIsLoading(true);
+    try {
+      const board = await getBoard(boardId);
+      setBoardName(board?.name || '');
+      setBoardDescription(board?.description || '');
+      setBoardBackground(board?.background || '');
+    } catch (error) {
+      console.error('Error loading board for edit:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveBoard = async () => {
+    const name = boardName.trim();
+    if (!name) return;
+
+    setIsSavingBoard(true);
+    try {
+      const desc = boardDescription.trim();
+      const bg = boardBackground.trim();
+      await updateBoard(boardId, {
+        name,
+        description: desc ? desc : null,
+        background: bg ? bg : null,
+      });
+      setIsEditBoardOpen(false);
+      router.refresh();
+    } catch (error) {
+      console.error('Error updating board:', error);
+    } finally {
+      setIsSavingBoard(false);
+    }
+  };
+
   return (
     <div className="relative">
       <button
@@ -78,7 +125,7 @@ export function BoardMenu({ boardId }: BoardMenuProps) {
             className="fixed inset-0 z-40"
           />
 
-          <div className="absolute right-0 mt-2 z-50 w-80 bg-white rounded-lg shadow-xl border border-gray-200">
+          <div className="absolute right-0 mt-2 z-50 w-96 bg-white rounded-lg shadow-xl border border-gray-200">
             <div className="p-3 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-sm font-semibold text-gray-700">Menu du board</h3>
               <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-gray-700">
@@ -89,6 +136,15 @@ export function BoardMenu({ boardId }: BoardMenuProps) {
             </div>
 
             <div className="p-3">
+              <Button
+                onClick={openEditBoard}
+                disabled={isLoading}
+                variant="outline"
+                className="w-full mb-4"
+              >
+                Modifier le board
+              </Button>
+
               <div className="text-xs font-semibold text-gray-600 mb-2">Créer une étiquette</div>
 
               <div className="flex gap-2">
@@ -134,6 +190,63 @@ export function BoardMenu({ boardId }: BoardMenuProps) {
           </div>
         </>
       )}
+
+      <Modal
+        isOpen={isEditBoardOpen}
+        onClose={() => setIsEditBoardOpen(false)}
+        title="Modifier le board"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Nom"
+            value={boardName}
+            onChange={(e) => setBoardName(e.target.value)}
+            placeholder="Nom du board"
+            disabled={isSavingBoard}
+          />
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700">Description</label>
+            <textarea
+              value={boardDescription}
+              onChange={(e) => setBoardDescription(e.target.value)}
+              placeholder="Description (optionnel)"
+              className="w-full min-h-[100px] rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isSavingBoard}
+            />
+            <p className="mt-1 text-xs text-gray-500">Laissez vide pour supprimer la description.</p>
+          </div>
+
+          <Input
+            label="Background"
+            value={boardBackground}
+            onChange={(e) => setBoardBackground(e.target.value)}
+            placeholder="Ex: linear-gradient(to br, #2563eb, #7c3aed)"
+            disabled={isSavingBoard}
+          />
+          <p className="text-xs text-gray-500">
+            Valeur CSS (utilisée comme propriété <span className="font-mono">background</span>). Laissez vide pour revenir au fond par défaut.
+          </p>
+
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditBoardOpen(false)}
+              disabled={isSavingBoard}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleSaveBoard}
+              disabled={isSavingBoard || !boardName.trim()}
+              isLoading={isSavingBoard}
+            >
+              Enregistrer
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

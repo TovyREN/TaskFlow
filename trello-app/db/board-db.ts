@@ -79,6 +79,20 @@ export const boardDb = {
     return rows.map(rowToBoard);
   },
 
+  // Trouver tous les boards accessibles par un utilisateur (owner ou membre)
+  findByUserId(userId: string): Board[] {
+    const stmt = db.prepare(`
+      SELECT DISTINCT b.* 
+      FROM boards b
+      LEFT JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = ?
+      WHERE b.owner_id = ? OR (bm.user_id = ? AND bm.status = 'accepted')
+      ORDER BY b.created_at DESC
+    `);
+    const rows = stmt.all(userId, userId, userId) as BoardRow[];
+
+    return rows.map(rowToBoard);
+  },
+
   update(
     id: string,
     data: Partial<Pick<Board, 'name' | 'description' | 'background' | 'visibility'>>

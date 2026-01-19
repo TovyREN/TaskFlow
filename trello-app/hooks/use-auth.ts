@@ -1,13 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { LoginInput, RegisterInput } from '@/lib/validations/auth';
+import type { AuthUser } from '@/types/auth';
+import { clearAuthToken } from '@/lib/utils/auth-token';
 
 export function useAuth() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const router = useRouter();
+
+  // Charger les données utilisateur au montage du composant
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me', { credentials: 'include' });
+
+        if (response.ok) {
+          const userData = await response.json();
+          setUser(userData);
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error('Erreur lors du chargement de l\'utilisateur:', err);
+      }
+    };
+
+    loadUser();
+  }, []);
 
   const login = async (data: LoginInput) => {
     try {
@@ -21,6 +44,7 @@ export function useAuth() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
@@ -35,6 +59,8 @@ export function useAuth() {
       }
 
       console.log('✅ Connexion réussie! User ID:', responseData.user?.id);
+      console.log('🔑 Token reçu:', responseData.token ? `${responseData.token.substring(0, 20)}...` : 'AUCUN');
+      setUser(responseData.user);
 
       router.push('/boards');
       router.refresh();
@@ -60,6 +86,7 @@ export function useAuth() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
@@ -80,6 +107,8 @@ export function useAuth() {
       }
 
       console.log('✅ Compte créé! User ID:', responseData.user.id);
+      console.log('🔑 Token reçu:', responseData.token ? `${responseData.token.substring(0, 20)}...` : 'AUCUN');
+      setUser(responseData.user);
 
       router.push('/boards');
       router.refresh();
@@ -97,9 +126,13 @@ export function useAuth() {
     try {
       setIsLoading(true);
       console.log('👋 Déconnexion...');
-      
-      // Supprimer les cookies
-      document.cookie = 'sb-access-token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+      // Clear cookie + session server-side
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+
+      // Best-effort cleanup if any legacy token exists
+      clearAuthToken();
+      setUser(null);
       
       console.log('✅ Déconnexion réussie');
       router.push('/auth/login');
@@ -113,6 +146,7 @@ export function useAuth() {
   };
 
   return {
+    user,
     login,
     register,
     logout,

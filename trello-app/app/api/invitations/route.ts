@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
+import { boardMemberDb } from '@/db/board-member-db';
 import type { ApiError } from '@/types/auth';
 
 export const runtime = 'nodejs';
@@ -13,6 +14,7 @@ function getTokenFromRequest(request: NextRequest): string | null {
   return request.cookies.get('sb-access-token')?.value ?? null;
 }
 
+// Obtenir les invitations en attente de l'utilisateur
 export async function GET(request: NextRequest) {
   try {
     const token = getTokenFromRequest(request);
@@ -28,17 +30,12 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    
-    return NextResponse.json({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      avatar: user.avatar,
-      bio: user.bio,
-      contactInfo: user.contactInfo,
-    });
+
+    const invitations = boardMemberDb.findPendingInvitations(user.id);
+
+    return NextResponse.json({ invitations });
   } catch (error) {
-    console.error('Get user error:', error);
+    console.error('Get invitations error:', error);
     return NextResponse.json<ApiError>(
       { error: 'Une erreur est survenue' },
       { status: 500 }

@@ -23,7 +23,7 @@ async function getUserIdFromCookies(): Promise<string | null> {
 
 export async function getUserBoards(userId: string): Promise<Board[]> {
   try {
-    const boards = boardDb.findByOwnerId(userId);
+    const boards = boardDb.findByUserId(userId);
     return boards.map(board => ({
       ...board,
       created_at: board.created_at.toISOString(),

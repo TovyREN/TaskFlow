@@ -24,7 +24,10 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         avatar: user.avatar,
+        bio: user.bio,
+        contactInfo: user.contactInfo,
       },
+      token: token,
       session: {
         access_token: token,
       },
@@ -33,7 +36,9 @@ export async function POST(request: NextRequest) {
     // Définir le cookie
     response.cookies.set('sb-access-token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+        // If you're running `next start` locally (NODE_ENV=production) over http,
+        // a Secure cookie would be silently dropped by the browser.
+        secure: request.nextUrl.protocol === 'https:',
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 jours
       path: '/',

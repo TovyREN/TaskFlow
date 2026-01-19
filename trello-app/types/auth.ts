@@ -3,6 +3,8 @@ export interface AuthUser {
   email: string;
   name: string | null;
   avatar: string | null;
+  bio: string | null;
+  contactInfo: string | null;
 }
 
 export interface AuthResponse {

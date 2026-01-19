@@ -15,7 +15,7 @@ import {
   pointerWithin,
   rectIntersection
 } from '@dnd-kit/core';
-import { SortableContext, horizontalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, horizontalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { BoardList } from './board-list';
 import { AddListButton } from './add-list-button';
 import { moveList, moveCard } from '@/actions/list-actions';
@@ -51,7 +51,26 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event;
-    setOverId(over ? over.id as string : null);
+    if (!over) {
+      setOverId(null);
+      return;
+    }
+
+    const overType = over.data.current?.type;
+    if (overType === 'list-drop') {
+      setOverId(over.data.current?.listId as string);
+      return;
+    }
+
+    setOverId(over.id as string);
+  };
+
+  const findCardLocation = (cardId: string): { listIndex: number; cardIndex: number } | null => {
+    for (let listIndex = 0; listIndex < items.length; listIndex++) {
+      const cardIndex = items[listIndex].cards.findIndex((c) => c.id === cardId);
+      if (cardIndex !== -1) return { listIndex, cardIndex };
+    }
+    return null;
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -92,72 +111,95 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
     } 
     // Déplacement de carte
     else if (activeType === 'card') {
-      const sourceList = items.find(item => 
-        item.cards.some(card => card.id === activeId)
-      );
-      
-      if (!sourceList) {
+      const sourceLoc = findCardLocation(activeId);
+      if (!sourceLoc) {
         setActiveId(null);
         return;
       }
 
-      // Trouver la liste cible
-      let targetList = items.find(item => 
-        item.cards.some(card => card.id === overId)
-      );
-      
-      // Si pas trouvée, c'est peut-être l'ID de la liste elle-même
-      if (!targetList) {
-        targetList = items.find(item => item.list.id === overId);
-      }
+      const overType = over.data.current?.type as string | undefined;
 
-      if (!targetList) {
-        setActiveId(null);
-        return;
-      }
+      // Déterminer la liste cible + index cible
+      let targetListId: string | null = null;
+      let targetIndex: number | null = null;
 
-      const isSameList = sourceList.list.id === targetList.list.id;
-      const sourceCards = [...sourceList.cards];
-      const targetCards = isSameList ? sourceCards : [...targetList.cards];
-
-      const activeCard = sourceCards.find(card => card.id === activeId);
-      if (!activeCard) {
-        setActiveId(null);
-        return;
-      }
-
-      // Retirer la carte de la liste source
-      const activeIndex = sourceCards.findIndex(card => card.id === activeId);
-      sourceCards.splice(activeIndex, 1);
-
-      // Trouver la position dans la liste cible
-      let overIndex = targetCards.findIndex(card => card.id === overId);
-      if (overIndex === -1) {
-        overIndex = targetCards.length;
-      }
-
-      // Insérer la carte dans la liste cible
-      targetCards.splice(overIndex, 0, activeCard);
-
-      // Mettre à jour l'état
-      const newItems = items.map(item => {
-        if (item.list.id === sourceList.list.id && isSameList) {
-          return { ...item, cards: targetCards };
-        } else if (item.list.id === sourceList.list.id) {
-          return { ...item, cards: sourceCards };
-        } else if (item.list.id === targetList.list.id) {
-          return { ...item, cards: targetCards };
+      if (overType === 'card') {
+        const overLoc = findCardLocation(overId);
+        if (!overLoc) {
+          setActiveId(null);
+          return;
         }
-        return item;
-      });
+        targetListId = items[overLoc.listIndex].list.id;
+        targetIndex = overLoc.cardIndex;
+      } else if (overType === 'list-drop') {
+        targetListId = (over.data.current?.listId as string) || null;
+        const targetList = items.find((it) => it.list.id === targetListId);
+        targetIndex = targetList ? targetList.cards.length : null;
+      } else if (overType === 'list') {
+        targetListId = overId;
+        const targetList = items.find((it) => it.list.id === targetListId);
+        targetIndex = targetList ? targetList.cards.length : null;
+      } else {
+        setActiveId(null);
+        return;
+      }
 
-      setItems(newItems);
+      if (!targetListId || targetIndex === null) {
+        setActiveId(null);
+        return;
+      }
 
-      try {
-        await moveCard(activeId, targetList.list.id, overIndex);
-      } catch (error) {
-        console.error('Error moving card:', error);
-        setItems(items);
+      const sourceListId = items[sourceLoc.listIndex].list.id;
+      const isSameList = sourceListId === targetListId;
+
+      // Mémoriser l'état courant pour rollback en cas d'erreur
+      const previousItems = items;
+
+      if (isSameList) {
+        const cards = items[sourceLoc.listIndex].cards;
+
+        // Si on drop sur la zone de liste (pas une carte), on met en fin.
+        const resolvedIndex = overType === 'card' ? targetIndex : Math.max(0, cards.length - 1);
+
+        if (sourceLoc.cardIndex !== resolvedIndex) {
+          const newCards = arrayMove(cards, sourceLoc.cardIndex, resolvedIndex);
+          const newItems = items.map((it, idx) => (idx === sourceLoc.listIndex ? { ...it, cards: newCards } : it));
+          setItems(newItems);
+
+          try {
+            await moveCard(activeId, targetListId, resolvedIndex);
+          } catch (error) {
+            console.error('Error moving card:', error);
+            setItems(previousItems);
+          }
+        }
+      } else {
+        const targetListIndex = items.findIndex((it) => it.list.id === targetListId);
+        if (targetListIndex === -1) {
+          setActiveId(null);
+          return;
+        }
+
+        const sourceCards = [...items[sourceLoc.listIndex].cards];
+        const targetCards = [...items[targetListIndex].cards];
+
+        const [moved] = sourceCards.splice(sourceLoc.cardIndex, 1);
+        targetCards.splice(targetIndex, 0, moved);
+
+        const newItems = items.map((it, idx) => {
+          if (idx === sourceLoc.listIndex) return { ...it, cards: sourceCards };
+          if (idx === targetListIndex) return { ...it, cards: targetCards };
+          return it;
+        });
+
+        setItems(newItems);
+
+        try {
+          await moveCard(activeId, targetListId, targetIndex);
+        } catch (error) {
+          console.error('Error moving card:', error);
+          setItems(previousItems);
+        }
       }
     }
 

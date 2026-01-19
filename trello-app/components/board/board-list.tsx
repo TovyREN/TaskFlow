@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useDroppable } from '@dnd-kit/core';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -25,6 +26,15 @@ interface BoardListProps {
 
 export function BoardList({ boardId, list, cards, isOverlay = false }: BoardListProps) {
   const router = useRouter();
+
+  const { setNodeRef: setCardsDropRef } = useDroppable({
+    id: `list-drop-${list.id}`,
+    data: {
+      type: 'list-drop',
+      listId: list.id,
+    },
+  });
+
   const {
     attributes,
     listeners,
@@ -133,7 +143,7 @@ export function BoardList({ boardId, list, cards, isOverlay = false }: BoardList
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
         <div className={`space-y-2 mb-2 max-h-[calc(100vh-300px)] overflow-y-auto min-h-[50px] rounded p-2 transition-colors ${
           isOverlay ? 'bg-blue-50 ring-2 ring-blue-400 ring-inset' : ''
-        }`}>
+        }`} ref={setCardsDropRef}>
           {cards.map((card) => (
             <CardItem key={card.id} card={card} boardId={boardId} listTitle={list.title} />
           ))}

@@ -355,8 +355,8 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose}>
-      <div className="w-full max-w-6xl bg-white rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
+    <Modal isOpen={true} onClose={onClose} size="2xl">
+      <div className="max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="p-6 border-b">
           <div className="flex items-start gap-3">

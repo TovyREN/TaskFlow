@@ -86,7 +86,10 @@ export async function getBoard(boardId: string): Promise<Board | null> {
 
 export async function updateBoard(
   boardId: string,
-  data: Partial<CreateBoardInput>
+  data: Partial<Omit<CreateBoardInput, 'description' | 'background'>> & {
+    description?: string | null;
+    background?: string | null;
+  }
 ): Promise<Board> {
   try {
     const userId = await getUserIdFromCookies();

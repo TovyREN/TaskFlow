@@ -6,6 +6,7 @@ import { getBoardLists, getListCards } from '@/actions/list-actions';
 import { verifyToken } from '@/lib/jwt';
 import { BoardContent } from '@/components/board/board-content';
 import { BoardMenu } from '@/components/board/board-menu';
+import { UserMenu } from '@/components/shared/user-menu';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,8 @@ export default async function BoardPage({ params }: BoardPageProps) {
   if (!payload) {
     redirect('/auth/login');
   }
+
+  const userId = payload.userId;
 
   // Récupérer le board
   const board = await getBoard(boardId);
@@ -77,10 +80,8 @@ export default async function BoardPage({ params }: BoardPageProps) {
             </div>
             
             <div className="flex items-center gap-3">
-              <button className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors">
-                Partager
-              </button>
-              <BoardMenu boardId={boardId} />
+              <BoardMenu boardId={boardId} currentUserId={userId} />
+              <UserMenu />
             </div>
           </div>
           

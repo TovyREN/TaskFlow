@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { BoardsList } from '@/components/board/boards-list';
 import { CreateBoardButton } from '@/components/board/create-board-button';
+import { InvitationsList } from '@/components/board/invitations-list';
 import { LoadingSpinner } from '@/components/shared/loading';
+import { UserMenu } from '@/components/shared/user-menu';
 import { getUserBoards } from '@/actions/board-actions';
 import { verifyToken } from '@/lib/jwt';
 
@@ -36,13 +38,19 @@ export default async function BoardsPage() {
                 Mes Boards
               </h1>
             </div>
-            <CreateBoardButton />
+            <div className="flex items-center gap-3">
+              <CreateBoardButton />
+              <UserMenu />
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* Invitations (client component) */}
+        <InvitationsList />
+        
         <Suspense fallback={<LoadingSpinner />}>
           <BoardsContent userId={userId} />
         </Suspense>

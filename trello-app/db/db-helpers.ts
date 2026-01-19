@@ -6,6 +6,8 @@ export interface UserRow {
   password_hash: string;
   name: string | null;
   avatar: string | null;
+  bio: string | null;
+  contact_info: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -15,6 +17,8 @@ export interface User {
   email: string;
   name: string | null;
   avatar: string | null;
+  bio: string | null;
+  contactInfo: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -42,6 +46,8 @@ function rowToUser(row: UserRow): User {
     email: row.email,
     name: row.name,
     avatar: row.avatar,
+    bio: row.bio,
+    contactInfo: row.contact_info,
     createdAt: timestampToDate(row.created_at)!,
     updatedAt: timestampToDate(row.updated_at)!,
   };
@@ -76,6 +82,8 @@ export const userDb = {
       email,
       name,
       avatar: null,
+      bio: null,
+      contactInfo: null,
       createdAt: new Date(now * 1000),
       updatedAt: new Date(now * 1000),
     };
@@ -100,7 +108,14 @@ export const userDb = {
     return row ? rowToUser(row) : null;
   },
 
-  update(id: string, data: Partial<Pick<User, 'name' | 'avatar'>>): User | null {
+  findByEmailPublic(email: string): User | null {
+    const stmt = db.prepare('SELECT * FROM users WHERE email = ?');
+    const row = stmt.get(email) as UserRow | undefined;
+
+    return row ? rowToUser(row) : null;
+  },
+
+  update(id: string, data: Partial<Pick<User, 'name' | 'avatar' | 'bio' | 'contactInfo'>>): User | null {
     const updates: string[] = [];
     const values: any[] = [];
 
@@ -114,10 +129,23 @@ export const userDb = {
       values.push(data.avatar);
     }
 
+    if (data.bio !== undefined) {
+      updates.push('bio = ?');
+      values.push(data.bio);
+    }
+
+    if (data.contactInfo !== undefined) {
+      updates.push('contact_info = ?');
+      values.push(data.contactInfo);
+    }
+
     if (updates.length === 0) {
       return this.findById(id);
     }
 
+    const now = Math.floor(Date.now() / 1000);
+    updates.push('updated_at = ?');
+    values.push(now);
     values.push(id);
 
     const stmt = db.prepare(`

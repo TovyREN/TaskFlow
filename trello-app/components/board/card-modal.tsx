@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -56,8 +56,6 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   const [selectedLabelIds, setSelectedLabelIds] = useState<Set<string>>(
     () => new Set((card.labels || []).map((l) => l.id))
   );
-  const [newLabelName, setNewLabelName] = useState('');
-  const [newLabelColor, setNewLabelColor] = useState<'green' | 'yellow' | 'orange' | 'red' | 'purple' | 'blue' | 'sky' | 'lime' | 'pink' | 'gray'>('green');
 
   // Members
   const [members, setMembers] = useState<Array<{ id: string; email: string; name: string | null; avatar: string | null; role: string }>>([]);
@@ -185,23 +183,7 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
     }
   };
 
-  const handleCreateLabel = async () => {
-    if (!newLabelName.trim()) return;
-    setIsLoading(true);
-    try {
-      const created = await createBoardLabel(boardId, newLabelName.trim(), newLabelColor);
-      setSelectedLabelIds((prev) => new Set(prev).add(created.id));
-      await toggleCardLabel(boardId, card.id, created.id);
-      setNewLabelName('');
-      const refreshed = await getBoardLabels(boardId);
-      setLabels(refreshed.map((l) => ({ id: l.id, name: l.name, color: l.color })));
-      router.refresh();
-    } catch (error) {
-      console.error('Error creating label:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
 
   const handleToggleAssignee = async (userId: string) => {
     setIsLoading(true);
@@ -429,7 +411,7 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
                 )}
 
                 {dueDate && (
-                  <span className="text-[11px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded">📅 {new Date(`${dueDate}T00:00:00.000Z`).toLocaleDateString('fr-FR')}</span>
+                  <span className="text-[11px] bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Échéance : {new Date(`${dueDate}T00:00:00.000Z`).toLocaleDateString('fr-FR')}</span>
                 )}
               </div>
 
@@ -646,19 +628,19 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
                     onClick={() => setActivePanel((p) => (p === 'members' ? null : 'members'))}
                     className="w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
                   >
-                    👥 Membres
+                    Membres
                   </button>
                   <button
                     onClick={() => setActivePanel((p) => (p === 'labels' ? null : 'labels'))}
                     className="w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
                   >
-                    🏷️ Étiquettes
+                    Étiquettes
                   </button>
                   <button
                     onClick={() => setActivePanel((p) => (p === 'dates' ? null : 'dates'))}
                     className="w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors"
                   >
-                    📅 Dates
+                    Dates
                   </button>
                 </div>
 
@@ -711,42 +693,16 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
                     </div>
 
                     <div className="mt-3 pt-3 border-t">
-                      <div className="text-xs font-semibold text-gray-600 mb-2">Créer</div>
-                      <div className="flex gap-2">
-                        <input
-                          value={newLabelName}
-                          onChange={(e) => setNewLabelName(e.target.value)}
-                          placeholder="Nom"
-                          className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          disabled={isLoading}
-                        />
-                        <select
-                          value={newLabelColor}
-                          onChange={(e) => setNewLabelColor(e.target.value as any)}
-                          className="p-2 border rounded"
-                          disabled={isLoading}
-                        >
-                          {labelOptions.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.value}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <Button
-                        onClick={handleCreateLabel}
-                        disabled={isLoading || !newLabelName.trim()}
-                        className="mt-2 bg-blue-600 hover:bg-blue-700 text-white w-full"
-                      >
-                        Créer l’étiquette
-                      </Button>
+                      <p className="text-xs text-gray-600">
+                        Pour créer de nouvelles étiquettes, utilisez le menu du board.
+                      </p>
                     </div>
                   </div>
                 )}
 
                 {activePanel === 'dates' && (
                   <div className="mt-3 border rounded p-3 bg-white">
-                    <div className="text-xs font-semibold text-gray-600 mb-2">Date d’échéance</div>
+                    <div className="text-xs font-semibold text-gray-600 mb-2">Date d'échéance</div>
                     <input
                       type="date"
                       value={dueDate}
@@ -778,20 +734,20 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
                 <h4 className="text-sm font-semibold text-gray-600 mb-2">ACTIONS</h4>
                 <div className="space-y-2">
                   <button className="w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors">
-                    ➡️ Déplacer
+                    Déplacer
                   </button>
                   <button className="w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors">
-                    📋 Copier
+                    Copier
                   </button>
                   <button className="w-full text-left px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded text-sm font-medium transition-colors">
-                    📦 Archiver
+                    Archiver
                   </button>
                   <button 
                     onClick={handleDelete}
                     disabled={isLoading}
                     className="w-full text-left px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded text-sm font-medium transition-colors"
                   >
-                    🗑️ Supprimer
+                    Supprimer
                   </button>
                 </div>
               </div>
@@ -802,3 +758,4 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
     </Modal>
   );
 }
+

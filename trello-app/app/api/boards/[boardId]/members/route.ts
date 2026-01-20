@@ -201,6 +201,113 @@ export async function POST(
   }
 }
 
+// Modifier le rôle d'un membre du board
+export async function PATCH(
+  request: NextRequest,
+  props: { params: Promise<{ boardId: string }> }
+) {
+  try {
+    const token = getTokenFromRequest(request);
+    if (!token) {
+      return NextResponse.json<ApiError>({ error: 'Non authentifié' }, { status: 401 });
+    }
+
+    const user = getUserFromToken(token);
+    
+    if (!user) {
+      return NextResponse.json<ApiError>(
+        { error: 'Session invalide' },
+        { status: 401 }
+      );
+    }
+
+    const params = await props.params;
+    const { boardId } = params;
+
+    const board = boardDb.findById(boardId);
+    if (!board) {
+      const debug = process.env.NODE_ENV === 'development' ? { boardId, ...getDatabaseDebugInfo() } : undefined;
+      return NextResponse.json<ApiError & { debug?: unknown }>({ error: `Board introuvable (${boardId})`, debug }, { status: 404 });
+    }
+
+    const isOwner = board.owner_id === user.id;
+
+    // Backfill owner membership
+    if (isOwner && !boardMemberDb.isMember(boardId, user.id)) {
+      try {
+        boardMemberDb.addMember(boardId, user.id, 'owner', 'accepted');
+      } catch {
+        // ignore
+      }
+    }
+
+    // Vérifier que l'utilisateur est owner ou admin du board
+    const memberRole = isOwner ? 'owner' : boardMemberDb.getMemberRole(boardId, user.id);
+    if (!memberRole || (memberRole !== 'owner' && memberRole !== 'admin')) {
+      return NextResponse.json<ApiError>(
+        { error: 'Vous devez être propriétaire ou administrateur pour modifier les rôles' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { userId, role } = body;
+
+    if (!userId || typeof userId !== 'string') {
+      return NextResponse.json<ApiError>(
+        { error: 'ID utilisateur requis' },
+        { status: 400 }
+      );
+    }
+
+    if (!role || !['owner', 'admin', 'member'].includes(role)) {
+      return NextResponse.json<ApiError>(
+        { error: 'Rôle invalide' },
+        { status: 400 }
+      );
+    }
+
+    // Vérifier que le membre à modifier existe
+    const targetCurrentRole = boardMemberDb.getMemberRole(boardId, userId);
+    if (!targetCurrentRole) {
+      return NextResponse.json<ApiError>(
+        { error: 'Ce membre n\'appartient pas au board' },
+        { status: 404 }
+      );
+    }
+
+    // Empêcher de modifier le rôle d'un owner si on n'est pas owner soi-même
+    if (targetCurrentRole === 'owner' && memberRole !== 'owner') {
+      return NextResponse.json<ApiError>(
+        { error: 'Vous ne pouvez pas modifier le rôle du propriétaire du board' },
+        { status: 403 }
+      );
+    }
+
+    // Empêcher un admin de promouvoir quelqu'un owner
+    if (role === 'owner' && memberRole !== 'owner') {
+      return NextResponse.json<ApiError>(
+        { error: 'Seul le propriétaire peut promouvoir quelqu\'un au rôle de propriétaire' },
+        { status: 403 }
+      );
+    }
+
+    // Modifier le rôle
+    boardMemberDb.updateMemberRole(boardId, userId, role);
+
+    return NextResponse.json({ 
+      message: 'Rôle modifié avec succès',
+      role
+    });
+  } catch (error) {
+    console.error('Update member role error:', error);
+    return NextResponse.json<ApiError>(
+      { error: 'Une erreur est survenue' },
+      { status: 500 }
+    );
+  }
+}
+
 // Supprimer un membre du board
 export async function DELETE(
   request: NextRequest,

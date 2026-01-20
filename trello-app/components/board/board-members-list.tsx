@@ -92,6 +92,31 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
     }
   };
 
+  const handleChangeRole = async (memberId: string, newRole: 'owner' | 'admin' | 'member') => {
+    try {
+      const response = await fetch(`/api/boards/${boardId}/members`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: memberId, role: newRole }),
+      });
+
+      if (response.ok) {
+        setMembers(members.map(m => 
+          m.id === memberId ? { ...m, role: newRole } : m
+        ));
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Erreur lors de la modification du rôle');
+      }
+    } catch (err) {
+      console.error('Error changing role:', err);
+      alert('Erreur lors de la modification du rôle');
+    }
+  };
+
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case 'owner':
@@ -115,6 +140,13 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
   };
 
   const canRemoveMember = (memberRole: string) => {
+    if (!currentUserRole) return false;
+    if (currentUserRole === 'member') return false;
+    if (memberRole === 'owner' && currentUserRole !== 'owner') return false;
+    return true;
+  };
+
+  const canChangeRole = (memberRole: string) => {
     if (!currentUserRole) return false;
     if (currentUserRole === 'member') return false;
     if (memberRole === 'owner' && currentUserRole !== 'owner') return false;
@@ -174,9 +206,22 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
-              <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(member.role)}`}>
-                {getRoleLabel(member.role)}
-              </span>
+              {member.id === currentUserId || !canChangeRole(member.role) ? (
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getRoleBadgeColor(member.role)}`}>
+                  {getRoleLabel(member.role)}
+                </span>
+              ) : (
+                <select
+                  value={member.role}
+                  onChange={(e) => handleChangeRole(member.id, e.target.value as 'owner' | 'admin' | 'member')}
+                  className={`px-2 py-1 text-xs font-medium rounded-full border-0 cursor-pointer ${getRoleBadgeColor(member.role)}`}
+                  disabled={member.role === 'owner' && currentUserRole !== 'owner'}
+                >
+                  <option value="member">Membre</option>
+                  <option value="admin">Admin</option>
+                  {currentUserRole === 'owner' && <option value="owner">Propriétaire</option>}
+                </select>
+              )}
               
               {member.id !== currentUserId && canRemoveMember(member.role) && (
                 <button

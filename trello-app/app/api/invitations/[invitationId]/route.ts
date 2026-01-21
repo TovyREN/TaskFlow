@@ -6,6 +6,10 @@ import type { ApiError } from '@/types/auth';
 export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
+export function generateStaticParams() {
+  return []; // for github actions static export
+}
+
 function getTokenFromRequest(request: NextRequest): string | null {
   const authHeader = request.headers.get('authorization');
   if (authHeader && authHeader.startsWith('Bearer ')) {

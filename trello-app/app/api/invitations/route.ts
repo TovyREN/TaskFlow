@@ -3,6 +3,7 @@ import { getUserFromToken } from '@/lib/auth';
 import { boardMemberDb } from '@/db/board-member-db';
 import type { ApiError } from '@/types/auth';
 
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 function getTokenFromRequest(request: NextRequest): string | null {

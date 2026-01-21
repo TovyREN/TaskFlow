@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserFromToken } from '@/lib/auth';
 import type { ApiError } from '@/types/auth';
 
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 function getTokenFromRequest(request: NextRequest): string | null {

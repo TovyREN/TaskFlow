@@ -105,7 +105,7 @@ export function ListMenu({ listId, currentTitle, currentBackground, onClose }: L
                       setIsEditingTitle(false);
                     }
                   }}
-                  className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border rounded text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   disabled={isLoading}
                 />
                 <div className="flex gap-2 mt-2">

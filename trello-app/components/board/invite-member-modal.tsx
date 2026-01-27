@@ -161,7 +161,7 @@ export function InviteMemberModal({ isOpen, onClose, boardId, onMemberAdded }: I
             id="role"
             value={role}
             onChange={(e) => setRole(e.target.value as 'member' | 'admin' | 'owner')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             disabled={loading}
           >
             <option value="member">Membre</option>

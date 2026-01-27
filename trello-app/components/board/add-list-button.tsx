@@ -35,7 +35,7 @@ export function AddListButton({ boardId }: AddListButtonProps) {
 
   if (isAdding) {
     return (
-      <div className="bg-gray-100 rounded-lg p-3 w-72 flex-shrink-0">
+      <div className="bg-gray-100 rounded-lg p-3 w-72 flex-shrink-0 text-gray-800">
         <form onSubmit={handleSubmit}>
           <input
             autoFocus
@@ -43,7 +43,7 @@ export function AddListButton({ boardId }: AddListButtonProps) {
             value={listTitle}
             onChange={(e) => setListTitle(e.target.value)}
             placeholder="Entrez le titre de la liste..."
-            className="w-full p-2 text-sm border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
+            className="w-full p-2 text-sm border rounded text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
             disabled={isLoading}
           />
           <div className="flex gap-2">

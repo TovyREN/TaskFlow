@@ -247,7 +247,7 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
   if (!isMounted) {
     return (
       <div className="p-6 overflow-x-auto">
-        <div className="flex gap-4 pb-6">
+        <div className="flex items-start gap-4 pb-6">
           {items.map(({ list, cards }) => (
             <div 
               key={list.id}
@@ -280,8 +280,8 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
       onDragEnd={handleDragEnd}
       collisionDetection={customCollisionDetection}
     >
-      <div className="p-6 overflow-x-auto">
-        <div className="flex gap-4 pb-6">
+    <div className="p-6 overflow-x-auto">
+      <div className="flex items-start gap-4 pb-6">
           <SortableContextForJSX items={listIds} strategy={horizontalListSortingStrategy}>
             {items.map(({ list, cards }) => (
               <BoardList 

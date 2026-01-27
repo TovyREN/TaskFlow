@@ -41,7 +41,7 @@ export function InviteMemberModal({ isOpen, onClose, boardId, onMemberAdded }: I
   };
 
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'member' | 'admin' | 'owner'>('member');
+  const [role, setRole] = useState<'member' | 'admin' | 'owner' | 'readonly'>('member');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -160,15 +160,17 @@ export function InviteMemberModal({ isOpen, onClose, boardId, onMemberAdded }: I
           <select
             id="role"
             value={role}
-            onChange={(e) => setRole(e.target.value as 'member' | 'admin' | 'owner')}
+            onChange={(e) => setRole(e.target.value as 'member' | 'admin' | 'owner' | 'readonly')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             disabled={loading}
           >
+            <option value="readonly">Lecture seule</option>
             <option value="member">Membre</option>
             <option value="admin">Administrateur</option>
             <option value="owner">Propriétaire</option>
           </select>
           <div className="mt-2 text-xs text-gray-600 space-y-1">
+            <p><strong>Lecture seule:</strong> Peut uniquement consulter le board</p>
             <p><strong>Membre:</strong> Peut créer et modifier des cartes</p>
             <p><strong>Administrateur:</strong> Peut inviter des membres et gérer le board</p>
             <p><strong>Propriétaire:</strong> Accès complet, peut supprimer le board</p>

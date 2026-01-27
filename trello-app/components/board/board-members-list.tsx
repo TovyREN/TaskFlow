@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ConfirmModal } from '../ui/confirm-modal';
 
 interface BoardMember {
   id: string;
   email: string;
   name: string | null;
   avatar: string | null;
-  role: 'owner' | 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member' | 'readonly';
 }
 
 interface BoardMembersListProps {
@@ -20,7 +21,20 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [currentUserRole, setCurrentUserRole] = useState<'owner' | 'admin' | 'member' | null>(null);
+  const [currentUserRole, setCurrentUserRole] = useState<'owner' | 'admin' | 'member' | 'readonly' | null>(null);
+  
+  // État pour le modal de confirmation de suppression
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    memberId: string;
+    memberName: string;
+    loading: boolean;
+  }>({
+    isOpen: false,
+    memberId: '',
+    memberName: '',
+    loading: false,
+  });
 
   const loadMembers = async () => {
     try {
@@ -72,27 +86,43 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
   }, [boardId, onRefresh]);
 
   const handleRemoveMember = async (memberId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir retirer ce membre ?')) return;
+    const member = members.find(m => m.id === memberId);
+    if (!member) return;
+    
+    // Ouvrir le modal de confirmation
+    setConfirmModal({
+      isOpen: true,
+      memberId,
+      memberName: member.name || member.email,
+      loading: false,
+    });
+  };
 
+  const confirmRemoveMember = async () => {
+    setConfirmModal(prev => ({ ...prev, loading: true }));
+    
     try {
-      const response = await fetch(`/api/boards/${boardId}/members?userId=${memberId}`, {
+      const response = await fetch(`/api/boards/${boardId}/members?userId=${confirmModal.memberId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
 
       if (response.ok) {
-        setMembers(members.filter(m => m.id !== memberId));
+        setMembers(members.filter(m => m.id !== confirmModal.memberId));
+        setConfirmModal({ isOpen: false, memberId: '', memberName: '', loading: false });
       } else {
         const data = await response.json();
         alert(data.error || 'Erreur lors de la suppression');
+        setConfirmModal(prev => ({ ...prev, loading: false }));
       }
     } catch (err) {
       console.error('Error removing member:', err);
       alert('Erreur lors de la suppression');
+      setConfirmModal(prev => ({ ...prev, loading: false }));
     }
   };
 
-  const handleChangeRole = async (memberId: string, newRole: 'owner' | 'admin' | 'member') => {
+  const handleChangeRole = async (memberId: string, newRole: 'owner' | 'admin' | 'member' | 'readonly') => {
     try {
       const response = await fetch(`/api/boards/${boardId}/members`, {
         method: 'PATCH',
@@ -123,6 +153,8 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
         return 'bg-purple-100 text-purple-800';
       case 'admin':
         return 'bg-blue-100 text-blue-800';
+      case 'readonly':
+        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -134,6 +166,8 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
         return 'Propriétaire';
       case 'admin':
         return 'Admin';
+      case 'readonly':
+        return 'Lecture seule';
       default:
         return 'Membre';
     }
@@ -141,14 +175,14 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
 
   const canRemoveMember = (memberRole: string) => {
     if (!currentUserRole) return false;
-    if (currentUserRole === 'member') return false;
+    if (currentUserRole === 'member' || currentUserRole === 'readonly') return false;
     if (memberRole === 'owner' && currentUserRole !== 'owner') return false;
     return true;
   };
 
   const canChangeRole = (memberRole: string) => {
     if (!currentUserRole) return false;
-    if (currentUserRole === 'member') return false;
+    if (currentUserRole === 'member' || currentUserRole === 'readonly') return false;
     if (memberRole === 'owner' && currentUserRole !== 'owner') return false;
     return true;
   };
@@ -213,10 +247,11 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
               ) : (
                 <select
                   value={member.role}
-                  onChange={(e) => handleChangeRole(member.id, e.target.value as 'owner' | 'admin' | 'member')}
+                  onChange={(e) => handleChangeRole(member.id, e.target.value as 'owner' | 'admin' | 'member' | 'readonly')}
                   className={`px-2 py-1 text-xs font-medium rounded-full border-0 cursor-pointer ${getRoleBadgeColor(member.role)}`}
                   disabled={member.role === 'owner' && currentUserRole !== 'owner'}
                 >
+                  <option value="readonly">Lecture seule</option>
                   <option value="member">Membre</option>
                   <option value="admin">Admin</option>
                   {currentUserRole === 'owner' && <option value="owner">Propriétaire</option>}
@@ -244,6 +279,19 @@ export function BoardMembersList({ boardId, currentUserId, onRefresh }: BoardMem
           Aucun membre dans ce board
         </p>
       )}
+
+      {/* Modal de confirmation pour retirer un membre */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ isOpen: false, memberId: '', memberName: '', loading: false })}
+        onConfirm={confirmRemoveMember}
+        title="Retirer ce membre ?"
+        message={`Êtes-vous sûr de vouloir retirer ${confirmModal.memberName} de ce board ? Cette personne n'aura plus accès au board et devra être réinvitée.`}
+        confirmText="Retirer"
+        cancelText="Annuler"
+        variant="danger"
+        loading={confirmModal.loading}
+      />
     </div>
   );
 }

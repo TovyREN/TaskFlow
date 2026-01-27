@@ -20,6 +20,7 @@ import {
 } from '@/actions/card-actions';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
+import { useErrorModal } from '@/components/ui/error-modal';
 import type { Card } from '@/types/list';
 
 interface CardModalProps {
@@ -27,10 +28,12 @@ interface CardModalProps {
   boardId: string;
   listTitle: string;
   onClose: () => void;
+  canEdit?: boolean;
 }
 
-export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps) {
+export function CardModal({ card, boardId, listTitle, onClose, canEdit = true }: CardModalProps) {
   const router = useRouter();
+  const { showReadonlyError } = useErrorModal();
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description || '');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -125,6 +128,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   }, [boardId, card.id]);
 
   const handleSaveTitle = async () => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     if (!title.trim()) return;
     
     setIsLoading(true);
@@ -140,6 +147,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleSaveDueDate = async () => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     setIsLoading(true);
     try {
       const iso = dueDate ? new Date(`${dueDate}T00:00:00.000Z`).toISOString() : null;
@@ -153,6 +164,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleClearDueDate = async () => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     setDueDate('');
     setIsLoading(true);
     try {
@@ -166,6 +181,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleToggleLabel = async (labelId: string) => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     setIsLoading(true);
     try {
       await toggleCardLabel(boardId, card.id, labelId);
@@ -186,6 +205,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
 
 
   const handleToggleAssignee = async (userId: string) => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     setIsLoading(true);
     try {
       await toggleCardAssignee(boardId, card.id, userId);
@@ -204,6 +227,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleCreateChecklist = async () => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     if (!newChecklistTitle.trim()) return;
     setIsLoading(true);
     try {
@@ -219,6 +246,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleAddChecklistItem = async (checklistId: string) => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     const title = (newItemByChecklist[checklistId] || '').trim();
     if (!title) return;
     setIsLoading(true);
@@ -237,6 +268,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleToggleChecklistItem = async (itemId: string, completed: boolean) => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     setIsLoading(true);
     try {
       await toggleChecklistItem(boardId, itemId, completed);
@@ -255,6 +290,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleDeleteChecklistItem = async (itemId: string) => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     setIsLoading(true);
     try {
       await deleteChecklistItem(boardId, itemId);
@@ -273,6 +312,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleDeleteChecklist = async (checklistId: string) => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     setIsLoading(true);
     try {
       await deleteChecklist(boardId, checklistId);
@@ -286,6 +329,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleAddComment = async () => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     const content = newComment.trim();
     if (!content) return;
     setIsLoading(true);
@@ -309,6 +356,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   }, [labels, selectedLabelIds]);
 
   const handleSaveDescription = async () => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     setIsLoading(true);
     try {
       const desc = description.trim();
@@ -323,6 +374,10 @@ export function CardModal({ card, boardId, listTitle, onClose }: CardModalProps)
   };
 
   const handleDelete = async () => {
+    if (!canEdit) {
+      showReadonlyError();
+      return;
+    }
     if (!confirm('Êtes-vous sûr de vouloir supprimer cette carte ?')) return;
     
     setIsLoading(true);

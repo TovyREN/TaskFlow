@@ -109,9 +109,68 @@ function migrateExistingDatabase() {
       // Ajouter la colonne avec défaut 'accepted' pour les membres existants
       db.exec('ALTER TABLE board_members ADD COLUMN status TEXT NOT NULL DEFAULT \'accepted\' CHECK (status IN (\'pending\', \'accepted\', \'rejected\'))');
     }
+
+    // Migration pour ajouter le rôle 'readonly' à la contrainte CHECK
+    // SQLite ne permet pas de modifier une contrainte CHECK, il faut recréer la table
+    migrateRoleConstraint();
   } catch (error) {
     // Best-effort: ne pas bloquer le démarrage si la migration échoue.
     console.warn('Database migration warning:', error);
+  }
+}
+
+function migrateRoleConstraint() {
+  // Vérifier si la migration est nécessaire en testant si 'readonly' est accepté
+  try {
+    // Essayer d'insérer une valeur 'readonly' temporaire pour tester
+    const testResult = db.prepare(`
+      SELECT sql FROM sqlite_master 
+      WHERE type='table' AND name='board_members'
+    `).get() as { sql: string } | undefined;
+
+    // Si la table existe et ne contient pas 'readonly' dans sa définition
+    if (testResult && !testResult.sql.includes('readonly')) {
+      console.log('[migration] Updating board_members table to support readonly role...');
+      
+      db.exec(`
+        -- Désactiver temporairement les foreign keys
+        PRAGMA foreign_keys = OFF;
+        
+        -- Créer la nouvelle table avec la contrainte mise à jour
+        CREATE TABLE IF NOT EXISTS board_members_new (
+          id TEXT PRIMARY KEY,
+          board_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'readonly')),
+          status TEXT NOT NULL DEFAULT 'accepted' CHECK (status IN ('pending', 'accepted', 'rejected')),
+          created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+          FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+          UNIQUE(board_id, user_id)
+        );
+        
+        -- Copier les données existantes
+        INSERT OR IGNORE INTO board_members_new (id, board_id, user_id, role, status, created_at)
+        SELECT id, board_id, user_id, role, status, created_at FROM board_members;
+        
+        -- Supprimer l'ancienne table
+        DROP TABLE board_members;
+        
+        -- Renommer la nouvelle table
+        ALTER TABLE board_members_new RENAME TO board_members;
+        
+        -- Recréer les index
+        CREATE INDEX IF NOT EXISTS idx_board_members_board_id ON board_members(board_id);
+        CREATE INDEX IF NOT EXISTS idx_board_members_user_id ON board_members(user_id);
+        
+        -- Réactiver les foreign keys
+        PRAGMA foreign_keys = ON;
+      `);
+      
+      console.log('[migration] board_members table updated successfully');
+    }
+  } catch (error) {
+    console.warn('[migration] Role constraint migration warning:', error);
   }
 }
 

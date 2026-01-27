@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS board_members (
   id TEXT PRIMARY KEY,
   board_id TEXT NOT NULL,
   user_id TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member', 'readonly')),
   status TEXT NOT NULL DEFAULT 'accepted' CHECK (status IN ('pending', 'accepted', 'rejected')),
   created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
   FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE,

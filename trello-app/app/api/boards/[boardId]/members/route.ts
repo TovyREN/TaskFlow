@@ -4,6 +4,7 @@ import { boardMemberDb } from '@/db/board-member-db';
 import { boardDb } from '@/db/board-db';
 import { getDatabaseDebugInfo } from '@/db/database';
 import { userDb } from '@/db/db-helpers';
+import { boardEventEmitter } from '@/lib/realtime/event-emitter';
 import type { ApiError } from '@/types/auth';
 
 export const runtime = 'nodejs';
@@ -161,7 +162,7 @@ export async function POST(
       );
     }
 
-    if (!['owner', 'admin', 'member'].includes(role)) {
+    if (!['owner', 'admin', 'member', 'readonly'].includes(role)) {
       return NextResponse.json<ApiError>(
         { error: 'Rôle invalide' },
         { status: 400 }
@@ -188,6 +189,15 @@ export async function POST(
 
     // Ajouter le membre avec statut 'pending'
     boardMemberDb.addMember(boardId, invitedUser.id, role, 'pending');
+
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'member-added',
+      boardId,
+      userId: user.id,
+      payload: { memberId: invitedUser.id, role, status: 'pending' },
+      timestamp: Date.now(),
+    });
 
     return NextResponse.json({ 
       message: 'Invitation envoyée avec succès'
@@ -260,7 +270,7 @@ export async function PATCH(
       );
     }
 
-    if (!role || !['owner', 'admin', 'member'].includes(role)) {
+    if (!role || !['owner', 'admin', 'member', 'readonly'].includes(role)) {
       return NextResponse.json<ApiError>(
         { error: 'Rôle invalide' },
         { status: 400 }
@@ -294,6 +304,15 @@ export async function PATCH(
 
     // Modifier le rôle
     boardMemberDb.updateMemberRole(boardId, userId, role);
+
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'member-role-changed',
+      boardId,
+      userId: user.id,
+      payload: { memberId: userId, oldRole: targetCurrentRole, newRole: role },
+      timestamp: Date.now(),
+    });
 
     return NextResponse.json({ 
       message: 'Rôle modifié avec succès',
@@ -386,6 +405,15 @@ export async function DELETE(
 
     // Retirer le membre
     boardMemberDb.removeMember(boardId, userIdToRemove);
+
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'member-removed',
+      boardId,
+      userId: user.id,
+      payload: { memberId: userIdToRemove },
+      timestamp: Date.now(),
+    });
 
     return NextResponse.json({ 
       message: 'Membre retiré avec succès'

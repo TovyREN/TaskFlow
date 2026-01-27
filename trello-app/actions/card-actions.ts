@@ -10,6 +10,7 @@ import { boardMemberDb } from '@/db/board-member-db';
 import { cardAssigneeDb } from '@/db/card-assignee-db';
 import { listDb, cardDb } from '@/db/list-db';
 import { boardDb } from '@/db/board-db';
+import { boardEventEmitter } from '@/lib/realtime/event-emitter';
 
 async function getUserIdFromCookies(): Promise<string> {
   const cookieStore = await cookies();
@@ -29,6 +30,14 @@ function canAccessBoard(boardId: string, userId: string): boolean {
   return members.some((m) => m.id === userId);
 }
 
+function canEditBoard(boardId: string, userId: string): boolean {
+  const board = boardDb.findById(boardId);
+  if (board && board.owner_id === userId) return true;
+  const role = boardMemberDb.getMemberRole(boardId, userId);
+  // readonly users cannot edit
+  return role !== null && role !== 'readonly';
+}
+
 export async function getBoardLabels(boardId: string) {
   const labels = labelDb.findByBoardId(boardId);
   return labels.map((l) => ({
@@ -39,9 +48,18 @@ export async function getBoardLabels(boardId: string) {
 
 export async function createBoardLabel(boardId: string, name: string, color: string) {
   const userId = await getUserIdFromCookies();
-  if (!canAccessBoard(boardId, userId)) throw new Error('Unauthorized');
+  if (!canEditBoard(boardId, userId)) throw new Error('Unauthorized');
 
   const label = labelDb.create(boardId, name.trim(), color);
+
+  boardEventEmitter.emit({
+    type: 'label-created',
+    boardId,
+    userId,
+    payload: { labelId: label.id, name, color },
+    timestamp: Date.now(),
+  });
+
   revalidatePath(`/boards/${boardId}`);
   return {
     ...label,
@@ -51,7 +69,7 @@ export async function createBoardLabel(boardId: string, name: string, color: str
 
 export async function toggleCardLabel(boardId: string, cardId: string, labelId: string) {
   const userId = await getUserIdFromCookies();
-  if (!canAccessBoard(boardId, userId)) throw new Error('Unauthorized');
+  if (!canEditBoard(boardId, userId)) throw new Error('Unauthorized');
 
   const has = labelDb.isLabelOnCard(cardId, labelId);
   if (has) {
@@ -59,6 +77,14 @@ export async function toggleCardLabel(boardId: string, cardId: string, labelId: 
   } else {
     labelDb.addLabelToCard(cardId, labelId);
   }
+
+  boardEventEmitter.emit({
+    type: 'label-updated',
+    boardId,
+    userId,
+    payload: { cardId, labelId, added: !has },
+    timestamp: Date.now(),
+  });
 
   revalidatePath(`/boards/${boardId}`);
   return { added: !has };
@@ -72,7 +98,7 @@ export async function getBoardMembers(boardId: string) {
 
 export async function toggleCardAssignee(boardId: string, cardId: string, userId: string) {
   const callerId = await getUserIdFromCookies();
-  if (!canAccessBoard(boardId, callerId)) throw new Error('Unauthorized');
+  if (!canEditBoard(boardId, callerId)) throw new Error('Unauthorized');
   const members = boardMemberDb.findMembersByBoardId(boardId);
   const targetIsMember = members.some((m) => m.id === userId) || boardDb.findById(boardId)?.owner_id === userId;
   if (!targetIsMember) throw new Error('Unauthorized');
@@ -83,6 +109,14 @@ export async function toggleCardAssignee(boardId: string, cardId: string, userId
   } else {
     cardAssigneeDb.assign(cardId, userId);
   }
+
+  boardEventEmitter.emit({
+    type: 'card-updated',
+    boardId,
+    userId: callerId,
+    payload: { cardId, assigneeChanged: true, assigned: !isAssigned, targetUserId: userId },
+    timestamp: Date.now(),
+  });
 
   revalidatePath(`/boards/${boardId}`);
   return { assigned: !isAssigned };
@@ -112,9 +146,18 @@ export async function getCardChecklists(cardId: string) {
 
 export async function createChecklist(boardId: string, cardId: string, title: string) {
   const callerId = await getUserIdFromCookies();
-  if (!canAccessBoard(boardId, callerId)) throw new Error('Unauthorized');
+  if (!canEditBoard(boardId, callerId)) throw new Error('Unauthorized');
 
   const checklist = checklistDb.createChecklist(cardId, title.trim());
+
+  boardEventEmitter.emit({
+    type: 'checklist-updated',
+    boardId,
+    userId: callerId,
+    payload: { cardId, checklistId: checklist.id, action: 'created' },
+    timestamp: Date.now(),
+  });
+
   revalidatePath(`/boards/${boardId}`);
   return {
     ...checklist,
@@ -125,9 +168,18 @@ export async function createChecklist(boardId: string, cardId: string, title: st
 
 export async function addChecklistItem(boardId: string, checklistId: string, title: string) {
   const callerId = await getUserIdFromCookies();
-  if (!canAccessBoard(boardId, callerId)) throw new Error('Unauthorized');
+  if (!canEditBoard(boardId, callerId)) throw new Error('Unauthorized');
 
   const item = checklistDb.addItem(checklistId, title.trim());
+
+  boardEventEmitter.emit({
+    type: 'checklist-updated',
+    boardId,
+    userId: callerId,
+    payload: { checklistId, itemId: item.id, action: 'item-added' },
+    timestamp: Date.now(),
+  });
+
   revalidatePath(`/boards/${boardId}`);
   return {
     ...item,
@@ -138,25 +190,52 @@ export async function addChecklistItem(boardId: string, checklistId: string, tit
 
 export async function toggleChecklistItem(boardId: string, itemId: string, completed: boolean) {
   const callerId = await getUserIdFromCookies();
-  if (!canAccessBoard(boardId, callerId)) throw new Error('Unauthorized');
+  if (!canEditBoard(boardId, callerId)) throw new Error('Unauthorized');
 
   checklistDb.toggleItem(itemId, completed);
+
+  boardEventEmitter.emit({
+    type: 'checklist-updated',
+    boardId,
+    userId: callerId,
+    payload: { itemId, completed, action: 'item-toggled' },
+    timestamp: Date.now(),
+  });
+
   revalidatePath(`/boards/${boardId}`);
 }
 
 export async function deleteChecklistItem(boardId: string, itemId: string) {
   const callerId = await getUserIdFromCookies();
-  if (!canAccessBoard(boardId, callerId)) throw new Error('Unauthorized');
+  if (!canEditBoard(boardId, callerId)) throw new Error('Unauthorized');
 
   checklistDb.deleteItem(itemId);
+
+  boardEventEmitter.emit({
+    type: 'checklist-updated',
+    boardId,
+    userId: callerId,
+    payload: { itemId, action: 'item-deleted' },
+    timestamp: Date.now(),
+  });
+
   revalidatePath(`/boards/${boardId}`);
 }
 
 export async function deleteChecklist(boardId: string, checklistId: string) {
   const callerId = await getUserIdFromCookies();
-  if (!canAccessBoard(boardId, callerId)) throw new Error('Unauthorized');
+  if (!canEditBoard(boardId, callerId)) throw new Error('Unauthorized');
 
   checklistDb.deleteChecklist(checklistId);
+
+  boardEventEmitter.emit({
+    type: 'checklist-updated',
+    boardId,
+    userId: callerId,
+    payload: { checklistId, action: 'deleted' },
+    timestamp: Date.now(),
+  });
+
   revalidatePath(`/boards/${boardId}`);
 }
 
@@ -178,9 +257,18 @@ export async function getCardComments(cardId: string) {
 
 export async function addCardComment(boardId: string, cardId: string, content: string) {
   const userId = await getUserIdFromCookies();
-  if (!canAccessBoard(boardId, userId)) throw new Error('Unauthorized');
+  if (!canEditBoard(boardId, userId)) throw new Error('Unauthorized');
 
   const comment = commentDb.create(cardId, userId, content.trim());
+
+  boardEventEmitter.emit({
+    type: 'comment-added',
+    boardId,
+    userId,
+    payload: { cardId, commentId: comment.id },
+    timestamp: Date.now(),
+  });
+
   revalidatePath(`/boards/${boardId}`);
   return {
     ...comment,

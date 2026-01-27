@@ -5,7 +5,7 @@ export interface BoardMemberRow {
   id: string;
   board_id: string;
   user_id: string;
-  role: 'owner' | 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member' | 'readonly';
   status: 'pending' | 'accepted' | 'rejected';
   created_at: number;
 }
@@ -15,7 +15,7 @@ export interface BoardMemberUser {
   email: string;
   name: string | null;
   avatar: string | null;
-  role: 'owner' | 'admin' | 'member';
+  role: 'owner' | 'admin' | 'member' | 'readonly';
 }
 
 export const boardMemberDb = {
@@ -31,7 +31,7 @@ export const boardMemberDb = {
     return stmt.all(boardId) as BoardMemberUser[];
   },
 
-  addMember(boardId: string, userId: string, role: 'owner' | 'admin' | 'member' = 'member', status: 'pending' | 'accepted' = 'pending'): BoardMemberRow {
+  addMember(boardId: string, userId: string, role: 'owner' | 'admin' | 'member' | 'readonly' = 'member', status: 'pending' | 'accepted' = 'pending'): BoardMemberRow {
     const id = generateCuid();
     const now = Math.floor(Date.now() / 1000);
 
@@ -72,18 +72,18 @@ export const boardMemberDb = {
     return result.count > 0;
   },
 
-  getMemberRole(boardId: string, userId: string): 'owner' | 'admin' | 'member' | null {
+  getMemberRole(boardId: string, userId: string): 'owner' | 'admin' | 'member' | 'readonly' | null {
     const stmt = db.prepare(`
       SELECT role
       FROM board_members
       WHERE board_id = ? AND user_id = ?
     `);
 
-    const result = stmt.get(boardId, userId) as { role: 'owner' | 'admin' | 'member' } | undefined;
+    const result = stmt.get(boardId, userId) as { role: 'owner' | 'admin' | 'member' | 'readonly' } | undefined;
     return result?.role || null;
   },
 
-  updateMemberRole(boardId: string, userId: string, role: 'owner' | 'admin' | 'member'): void {
+  updateMemberRole(boardId: string, userId: string, role: 'owner' | 'admin' | 'member' | 'readonly'): void {
     const stmt = db.prepare(`
       UPDATE board_members
       SET role = ?

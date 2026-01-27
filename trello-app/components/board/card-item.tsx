@@ -11,6 +11,7 @@ interface CardItemProps {
   card: Card;
   boardId: string;
   listTitle: string;
+  canEdit?: boolean;
 }
 
 function getInitials(nameOrEmail: string): string {
@@ -49,7 +50,7 @@ function labelColorClass(color: string): string {
   }
 }
 
-export function CardItem({ card, boardId, listTitle }: CardItemProps) {
+export function CardItem({ card, boardId, listTitle, canEdit = true }: CardItemProps) {
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -165,7 +166,7 @@ export function CardItem({ card, boardId, listTitle }: CardItemProps) {
       </div>
 
       {isModalOpen && (
-        <CardModal card={card} boardId={boardId} listTitle={listTitle} onClose={handleCloseModal} />
+        <CardModal card={card} boardId={boardId} listTitle={listTitle} onClose={handleCloseModal} canEdit={canEdit} />
       )}
     </>
   );

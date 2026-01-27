@@ -3,8 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { boardDb } from '@/db/board-db';
+import { boardMemberDb } from '@/db/board-member-db';
 import { verifyToken } from '@/lib/jwt';
 import { createBoardSchema, type CreateBoardInput } from '@/lib/validations/board';
+import { boardEventEmitter } from '@/lib/realtime/event-emitter';
 import type { Board } from '@/types/board';
 
 async function getUserIdFromCookies(): Promise<string | null> {
@@ -45,14 +47,22 @@ export async function createBoard(input: CreateBoardInput): Promise<Board> {
     // Validation
     const validated = createBoardSchema.parse(input);
 
-    // Create board
+    // Create board (always private since we use invitations)
     const board = boardDb.create(
       validated.name,
       userId,
       validated.description || null,
       validated.background || null,
-      validated.visibility || 'private'
+      'private'
     );
+
+    // Add owner as member of the board
+    try {
+      boardMemberDb.addMember(board.id, userId, 'owner', 'accepted');
+    } catch (e) {
+      // Ignore if already exists
+      console.warn('Could not add owner as member:', e);
+    }
 
     revalidatePath('/boards');
     
@@ -108,6 +118,15 @@ export async function updateBoard(
       throw new Error('Board not found or unauthorized');
     }
 
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'board-updated',
+      boardId,
+      userId,
+      payload: { ...data },
+      timestamp: Date.now(),
+    });
+
     revalidatePath(`/boards/${boardId}`);
     
     return {
@@ -127,6 +146,14 @@ export async function deleteBoard(boardId: string): Promise<void> {
     if (!userId) {
       throw new Error('Unauthorized');
     }
+
+    // Émettre l'événement AVANT suppression pour que les clients puissent le recevoir
+    boardEventEmitter.emit({
+      type: 'board-deleted',
+      boardId,
+      userId,
+      timestamp: Date.now(),
+    });
 
     const deleted = boardDb.delete(boardId);
 

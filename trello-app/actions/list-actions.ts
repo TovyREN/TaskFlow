@@ -1,12 +1,39 @@
 'use server';
 
+import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { listDb, cardDb } from '@/db/list-db';
 import { labelDb } from '@/db/label-db';
 import { cardAssigneeDb } from '@/db/card-assignee-db';
 import { commentDb } from '@/db/comment-db';
 import { checklistDb } from '@/db/checklist-db';
+import { boardDb } from '@/db/board-db';
+import { boardMemberDb } from '@/db/board-member-db';
+import { verifyToken } from '@/lib/jwt';
+import { boardEventEmitter, BoardEvent } from '@/lib/realtime/event-emitter';
 import type { List, Card } from '@/types/list';
+
+async function getUserIdFromCookies(): Promise<string | null> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('sb-access-token')?.value;
+  
+  if (!token) return null;
+  
+  try {
+    const payload = verifyToken(token);
+    return payload?.userId || null;
+  } catch {
+    return null;
+  }
+}
+
+function canEditBoard(boardId: string, userId: string): boolean {
+  const board = boardDb.findById(boardId);
+  if (board && board.owner_id === userId) return true;
+  const role = boardMemberDb.getMemberRole(boardId, userId);
+  // readonly users cannot edit
+  return role !== null && role !== 'readonly';
+}
 
 export async function getBoardLists(boardId: string): Promise<List[]> {
   try {
@@ -24,10 +51,24 @@ export async function getBoardLists(boardId: string): Promise<List[]> {
 
 export async function createList(boardId: string, title: string): Promise<List> {
   try {
+    const userId = await getUserIdFromCookies();
+    if (!userId || !canEditBoard(boardId, userId)) {
+      throw new Error('Unauthorized');
+    }
+
     const existingLists = listDb.findByBoardId(boardId);
     const position = existingLists.length;
 
     const list = listDb.create(boardId, title, position);
+
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'list-created',
+      boardId,
+      userId,
+      payload: { listId: list.id, title },
+      timestamp: Date.now(),
+    });
 
     revalidatePath(`/boards/${boardId}`);
     
@@ -44,22 +85,40 @@ export async function createList(boardId: string, title: string): Promise<List> 
 
 export async function updateList(listId: string, title: string, background?: string | null): Promise<List | null> {
   try {
+    const list = listDb.findById(listId);
+    if (!list) return null;
+
+    const userId = await getUserIdFromCookies();
+    if (!userId || !canEditBoard(list.board_id, userId)) {
+      throw new Error('Unauthorized');
+    }
+
     const updateData: any = { title };
     if (background !== undefined) {
       updateData.background = background;
     }
     
-    const list = listDb.update(listId, updateData);
+    const updatedList = listDb.update(listId, updateData);
     
-    if (!list) return null;
+    if (!updatedList) return null;
 
-    const boardId = list.board_id;
+    const boardId = updatedList.board_id;
+
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'list-updated',
+      boardId,
+      userId,
+      payload: { listId, title, background },
+      timestamp: Date.now(),
+    });
+
     revalidatePath(`/boards/${boardId}`);
     
     return {
-      ...list,
-      created_at: list.created_at.toISOString(),
-      updated_at: list.updated_at.toISOString(),
+      ...updatedList,
+      created_at: updatedList.created_at.toISOString(),
+      updated_at: updatedList.updated_at.toISOString(),
     } as any;
   } catch (error) {
     console.error('Error in updateList:', error);
@@ -72,8 +131,22 @@ export async function deleteList(listId: string): Promise<void> {
     const list = listDb.findById(listId);
     if (!list) throw new Error('List not found');
 
+    const userId = await getUserIdFromCookies();
+    if (!userId || !canEditBoard(list.board_id, userId)) {
+      throw new Error('Unauthorized');
+    }
+
     const boardId = list.board_id;
     listDb.delete(listId);
+
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'list-deleted',
+      boardId,
+      userId,
+      payload: { listId },
+      timestamp: Date.now(),
+    });
 
     revalidatePath(`/boards/${boardId}`);
   } catch (error) {
@@ -134,15 +207,30 @@ export async function getListCards(listId: string): Promise<Card[]> {
 
 export async function createCard(listId: string, title: string): Promise<Card> {
   try {
+    const list = listDb.findById(listId);
+    if (!list) throw new Error('List not found');
+
+    const userId = await getUserIdFromCookies();
+    if (!userId || !canEditBoard(list.board_id, userId)) {
+      throw new Error('Unauthorized');
+    }
+
     const existingCards = cardDb.findByListId(listId);
     const position = existingCards.length;
 
     const card = cardDb.create(listId, title, position);
+    const boardId = list.board_id;
 
-    const list = listDb.findById(listId);
-    if (list) {
-      revalidatePath(`/boards/${list.board_id}`);
-    }
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'card-created',
+      boardId,
+      userId,
+      payload: { cardId: card.id, listId, title },
+      timestamp: Date.now(),
+    });
+
+    revalidatePath(`/boards/${boardId}`);
     
     return {
       ...card,
@@ -161,6 +249,17 @@ export async function updateCard(
   data: { title?: string; description?: string; due_date?: string | null }
 ): Promise<Card | null> {
   try {
+    const existingCard = cardDb.findById(cardId);
+    if (!existingCard) return null;
+
+    const list = listDb.findById(existingCard.list_id);
+    if (!list) return null;
+
+    const userId = await getUserIdFromCookies();
+    if (!userId || !canEditBoard(list.board_id, userId)) {
+      throw new Error('Unauthorized');
+    }
+
     const updateData: any = {
       title: data.title,
       description: data.description,
@@ -174,10 +273,18 @@ export async function updateCard(
     
     if (!card) return null;
 
-    const list = listDb.findById(card.list_id);
-    if (list) {
-      revalidatePath(`/boards/${list.board_id}`);
-    }
+    const boardId = list.board_id;
+
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'card-updated',
+      boardId,
+      userId,
+      payload: { cardId, ...data },
+      timestamp: Date.now(),
+    });
+
+    revalidatePath(`/boards/${boardId}`);
     
     return {
       ...card,
@@ -197,11 +304,26 @@ export async function deleteCard(cardId: string): Promise<void> {
     if (!card) throw new Error('Card not found');
 
     const list = listDb.findById(card.list_id);
+    if (!list) throw new Error('List not found');
+
+    const userId = await getUserIdFromCookies();
+    if (!userId || !canEditBoard(list.board_id, userId)) {
+      throw new Error('Unauthorized');
+    }
+
+    const boardId = list.board_id;
     cardDb.delete(cardId);
 
-    if (list) {
-      revalidatePath(`/boards/${list.board_id}`);
-    }
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'card-deleted',
+      boardId,
+      userId,
+      payload: { cardId, listId: list.id },
+      timestamp: Date.now(),
+    });
+
+    revalidatePath(`/boards/${boardId}`);
   } catch (error) {
     console.error('Error in deleteCard:', error);
     throw error;
@@ -226,6 +348,11 @@ export async function moveCard(
     }
 
     const boardId = (oldList || targetList).board_id;
+
+    const userId = await getUserIdFromCookies();
+    if (!userId || !canEditBoard(boardId, userId)) {
+      throw new Error('Unauthorized');
+    }
 
     type CardUpdateData = Parameters<typeof cardDb.update>[1];
 
@@ -296,6 +423,15 @@ export async function moveCard(
       }
     }
 
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'card-moved',
+      boardId,
+      userId,
+      payload: { cardId, sourceListId: oldListId, targetListId, newPosition },
+      timestamp: Date.now(),
+    });
+
     revalidatePath(`/boards/${boardId}`);
   } catch (error) {
     console.error('Error in moveCard:', error);
@@ -312,6 +448,12 @@ export async function moveList(
     if (!list) throw new Error('List not found');
 
     const boardId = list.board_id;
+
+    const userId = await getUserIdFromCookies();
+    if (!userId || !canEditBoard(boardId, userId)) {
+      throw new Error('Unauthorized');
+    }
+
     const lists = listDb.findByBoardId(boardId);
     const oldIndex = lists.findIndex(l => l.id === listId);
 
@@ -337,6 +479,15 @@ export async function moveList(
         listDb.update(current.id, { position: index });
       }
     }
+
+    // Émettre l'événement pour les autres membres
+    boardEventEmitter.emit({
+      type: 'list-moved',
+      boardId,
+      userId,
+      payload: { listId, oldPosition: oldIndex, newPosition: targetIndex },
+      timestamp: Date.now(),
+    });
 
     revalidatePath(`/boards/${boardId}`);
   } catch (error) {

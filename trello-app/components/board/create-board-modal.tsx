@@ -39,7 +39,7 @@ export function CreateBoardModal({ isOpen, onClose }: CreateBoardModalProps) {
   } = useForm<CreateBoardInput>({
     resolver: zodResolver(createBoardSchema),
     defaultValues: {
-      visibility: 'private',
+
       background: BACKGROUND_OPTIONS[0].value,
     },
   });
@@ -145,24 +145,6 @@ export function CreateBoardModal({ isOpen, onClose }: CreateBoardModalProps) {
               </button>
             ))}
           </div>
-        </div>
-
-        {/* Visibility */}
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">
-            Visibilité
-          </label>
-          <select
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            {...register('visibility')}
-          >
-            <option value="private">Privé</option>
-            <option value="public">Public</option>
-            <option value="team">Équipe</option>
-          </select>
-          {errors.visibility && (
-            <p className="mt-1 text-sm text-red-600">{errors.visibility.message}</p>
-          )}
         </div>
 
         {/* Actions */}

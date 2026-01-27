@@ -22,9 +22,10 @@ interface BoardListProps {
   };
   cards: Card[];
   isOverlay?: boolean;
+  canEdit?: boolean;
 }
 
-export function BoardList({ boardId, list, cards, isOverlay = false }: BoardListProps) {
+export function BoardList({ boardId, list, cards, isOverlay = false, canEdit = true }: BoardListProps) {
   const router = useRouter();
 
   const { setNodeRef: setCardsDropRef } = useDroppable({
@@ -95,49 +96,53 @@ export function BoardList({ boardId, list, cards, isOverlay = false }: BoardList
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <button
-            ref={setActivatorNodeRef}
-            type="button"
-            aria-label="Déplacer la liste"
-            className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-200 rounded cursor-move"
-            {...attributes}
-            {...listeners}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M8 6h.01M8 12h.01M8 18h.01M12 6h.01M12 12h.01M12 18h.01M16 6h.01M16 12h.01M16 18h.01"
-              />
-            </svg>
-          </button>
+          {canEdit && (
+            <button
+              ref={setActivatorNodeRef}
+              type="button"
+              aria-label="Déplacer la liste"
+              className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-200 rounded cursor-move"
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 6h.01M8 12h.01M8 18h.01M12 6h.01M12 12h.01M12 18h.01M16 6h.01M16 12h.01M16 18h.01"
+                />
+              </svg>
+            </button>
+          )}
 
           <h3 className="font-semibold text-gray-800 flex-1 truncate">
             {list.title}
           </h3>
         </div>
-        <div className="relative">
-          <button 
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onClick={() => setShowMenu(!showMenu)}
-            className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-200 rounded"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-            </svg>
-          </button>
-          {showMenu && (
-            <ListMenu
-              listId={list.id}
-              currentTitle={list.title}
-              currentBackground={list.background}
-              onClose={() => setShowMenu(false)}
-            />
-          )}
-        </div>
+        {canEdit && (
+          <div className="relative">
+            <button 
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={() => setShowMenu(!showMenu)}
+              className="text-gray-500 hover:text-gray-700 p-1 hover:bg-gray-200 rounded"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+              </svg>
+            </button>
+            {showMenu && (
+              <ListMenu
+                listId={list.id}
+                currentTitle={list.title}
+                currentBackground={list.background}
+                onClose={() => setShowMenu(false)}
+              />
+            )}
+          </div>
+        )}
       </div>
 
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
@@ -145,7 +150,7 @@ export function BoardList({ boardId, list, cards, isOverlay = false }: BoardList
           isOverlay ? 'bg-blue-50 ring-2 ring-blue-400 ring-inset' : ''
         }`} ref={setCardsDropRef}>
           {cards.map((card) => (
-            <CardItem key={card.id} card={card} boardId={boardId} listTitle={list.title} />
+            <CardItem key={card.id} card={card} boardId={boardId} listTitle={list.title} canEdit={canEdit} />
           ))}
           {cards.length === 0 && (
             <div className="text-center py-8 text-gray-400 text-sm">
@@ -187,14 +192,14 @@ export function BoardList({ boardId, list, cards, isOverlay = false }: BoardList
             </Button>
           </div>
         </form>
-      ) : (
+      ) : canEdit ? (
         <button
           onClick={() => setIsAddingCard(true)}
           className="w-full text-left text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded p-2 transition-colors"
         >
           + Ajouter une carte
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -164,7 +164,7 @@ export function BoardList({ boardId, list, cards, isOverlay = false }: BoardList
             value={cardTitle}
             onChange={(e) => setCardTitle(e.target.value)}
             placeholder="Entrez un titre pour cette carte..."
-            className="w-full p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 text-sm border rounded resize-none text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={3}
             disabled={isLoading}
           />

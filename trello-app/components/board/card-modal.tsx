@@ -417,7 +417,7 @@ export function CardModal({ card, boardId, listTitle, onClose, canEdit = true }:
                         setIsEditingTitle(false);
                       }
                     }}
-                    className="w-full text-xl font-semibold border-2 border-blue-500 rounded px-2 py-1 focus:outline-none"
+                    className="w-full text-xl font-semibold border-2 border-blue-500 rounded px-2 py-1 text-gray-900 focus:outline-none"
                     disabled={isLoading}
                   />
                 </div>
@@ -486,7 +486,7 @@ export function CardModal({ card, boardId, listTitle, onClose, canEdit = true }:
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       placeholder="Ajouter une description plus détaillée..."
-                      className="w-full min-h-[120px] p-3 border-2 border-blue-500 rounded resize-none focus:outline-none"
+                      className="w-full min-h-[120px] p-3 border-2 border-blue-500 rounded resize-none text-gray-900 focus:outline-none"
                       disabled={isLoading}
                     />
                     <div className="flex gap-2 mt-2">
@@ -538,7 +538,7 @@ export function CardModal({ card, boardId, listTitle, onClose, canEdit = true }:
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Écrire un commentaire..."
-                      className="w-full min-h-[80px] p-2 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full min-h-[80px] p-2 border rounded resize-none text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       disabled={isLoading}
                     />
                     <Button
@@ -584,7 +584,7 @@ export function CardModal({ card, boardId, listTitle, onClose, canEdit = true }:
                     value={newChecklistTitle}
                     onChange={(e) => setNewChecklistTitle(e.target.value)}
                     placeholder="Titre de la checklist..."
-                    className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 p-2 border rounded text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     disabled={isLoading}
                   />
                   <Button
@@ -633,7 +633,7 @@ export function CardModal({ card, boardId, listTitle, onClose, canEdit = true }:
                                 onChange={(e) => handleToggleChecklistItem(it.id, e.target.checked)}
                                 disabled={isLoading}
                               />
-                              <div className={`flex-1 text-sm ${it.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+                                  <div className={`flex-1 text-sm ${it.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                                 {it.title}
                               </div>
                               <button
@@ -652,7 +652,7 @@ export function CardModal({ card, boardId, listTitle, onClose, canEdit = true }:
                             value={newItemByChecklist[cl.id] || ''}
                             onChange={(e) => setNewItemByChecklist((prev) => ({ ...prev, [cl.id]: e.target.value }))}
                             placeholder="Ajouter un élément..."
-                            className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1 p-2 border rounded text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             disabled={isLoading}
                           />
                           <Button
@@ -762,7 +762,7 @@ export function CardModal({ card, boardId, listTitle, onClose, canEdit = true }:
                       type="date"
                       value={dueDate}
                       onChange={(e) => setDueDate(e.target.value)}
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border rounded text-gray-900"
                       disabled={isLoading}
                     />
                     <div className="flex gap-2 mt-2">

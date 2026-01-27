@@ -83,6 +83,8 @@ export function BoardList({ boardId, list, cards, isOverlay = false, canEdit = t
 
   const cardIds = cards.map(card => card.id);
 
+  const SortableContextForJSX = SortableContext as unknown as (props: any) => any;
+
   const backgroundColor = list.background || '#f3f4f6';
 
   return (
@@ -145,7 +147,7 @@ export function BoardList({ boardId, list, cards, isOverlay = false, canEdit = t
         )}
       </div>
 
-      <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
+  <SortableContextForJSX items={cardIds} strategy={verticalListSortingStrategy}>
         <div className={`space-y-2 mb-2 max-h-[calc(100vh-300px)] overflow-y-auto min-h-[50px] rounded p-2 transition-colors ${
           isOverlay ? 'bg-blue-50 ring-2 ring-blue-400 ring-inset' : ''
         }`} ref={setCardsDropRef}>
@@ -158,7 +160,7 @@ export function BoardList({ boardId, list, cards, isOverlay = false, canEdit = t
             </div>
           )}
         </div>
-      </SortableContext>
+  </SortableContextForJSX>
 
       {isAddingCard ? (
         <form onSubmit={handleAddCard} className="mt-2">
@@ -167,7 +169,7 @@ export function BoardList({ boardId, list, cards, isOverlay = false, canEdit = t
             value={cardTitle}
             onChange={(e) => setCardTitle(e.target.value)}
             placeholder="Entrez un titre pour cette carte..."
-            className="w-full p-2 text-sm border rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 text-sm border rounded resize-none text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             rows={3}
             disabled={isLoading}
           />

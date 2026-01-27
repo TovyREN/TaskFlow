@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sessionDb } from '@/db/db-helpers';
 
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 function getTokenFromRequest(request: NextRequest): string | null {

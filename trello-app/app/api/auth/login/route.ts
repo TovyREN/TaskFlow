@@ -3,6 +3,7 @@ import { loginUser } from '@/lib/auth';
 import { loginSchema } from '@/lib/validations/auth';
 import type { ApiError } from '@/types/auth';
 
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {

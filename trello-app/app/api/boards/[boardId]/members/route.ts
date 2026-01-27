@@ -7,6 +7,7 @@ import { userDb } from '@/db/db-helpers';
 import { boardEventEmitter } from '@/lib/realtime/event-emitter';
 import type { ApiError } from '@/types/auth';
 
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 function getTokenFromRequest(request: NextRequest): string | null {

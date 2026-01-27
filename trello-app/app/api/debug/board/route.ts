@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { boardDb } from '@/db/board-db';
 import { getDatabaseDebugInfo } from '@/db/database';
 
+export const dynamic = "force-static";
 export const runtime = 'nodejs';
 
 export async function GET(request: NextRequest) {

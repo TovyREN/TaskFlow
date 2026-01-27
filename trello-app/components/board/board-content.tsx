@@ -216,6 +216,8 @@ export function BoardContent({ boardId, listsWithCards, canEdit = true }: BoardC
 
   const listIds = items.map(item => item.list.id);
 
+  const SortableContextForJSX = SortableContext as unknown as (props: any) => any;
+  const DragOverlayForJSX = DragOverlay as unknown as (props: any) => any;
   const sensors = useSensors(
     useSensor(PointerSensor, {
       // Prevent simple clicks from activating drag
@@ -253,7 +255,7 @@ export function BoardContent({ boardId, listsWithCards, canEdit = true }: BoardC
   if (!isMounted) {
     return (
       <div className="p-6 overflow-x-auto">
-        <div className="flex gap-4 pb-6">
+        <div className="flex items-start gap-4 pb-6">
           {items.map(({ list, cards }) => (
             <div 
               key={list.id}
@@ -308,9 +310,9 @@ export function BoardContent({ boardId, listsWithCards, canEdit = true }: BoardC
       onDragEnd={handleDragEnd}
       collisionDetection={customCollisionDetection}
     >
-      <div className="p-6 overflow-x-auto">
-        <div className="flex gap-4 pb-6">
-          <SortableContext items={listIds} strategy={horizontalListSortingStrategy}>
+    <div className="p-6 overflow-x-auto">
+      <div className="flex items-start gap-4 pb-6">
+          <SortableContextForJSX items={listIds} strategy={horizontalListSortingStrategy}>
             {items.map(({ list, cards }) => (
               <BoardList 
                 key={list.id} 
@@ -321,13 +323,13 @@ export function BoardContent({ boardId, listsWithCards, canEdit = true }: BoardC
                 canEdit={canEdit}
               />
             ))}
-          </SortableContext>
+          </SortableContextForJSX>
           
           {canEdit && <AddListButton boardId={boardId} />}
         </div>
       </div>
 
-      <DragOverlay>
+      <DragOverlayForJSX>
         {activeId ? (
           (() => {
             const activeList = items.find(item => item.list.id === activeId);
@@ -378,7 +380,7 @@ export function BoardContent({ boardId, listsWithCards, canEdit = true }: BoardC
             );
           })()
         ) : null}
-      </DragOverlay>
+  </DragOverlayForJSX>
     </DndContext>
   );
 }

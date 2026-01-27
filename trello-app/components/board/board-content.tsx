@@ -208,6 +208,8 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
 
   const listIds = items.map(item => item.list.id);
 
+  const SortableContextForJSX = SortableContext as unknown as (props: any) => any;
+  const DragOverlayForJSX = DragOverlay as unknown as (props: any) => any;
   const sensors = useSensors(
     useSensor(PointerSensor, {
       // Prevent simple clicks from activating drag
@@ -280,7 +282,7 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
     >
       <div className="p-6 overflow-x-auto">
         <div className="flex gap-4 pb-6">
-          <SortableContext items={listIds} strategy={horizontalListSortingStrategy}>
+          <SortableContextForJSX items={listIds} strategy={horizontalListSortingStrategy}>
             {items.map(({ list, cards }) => (
               <BoardList 
                 key={list.id} 
@@ -290,13 +292,13 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
                 isOverlay={overId === list.id}
               />
             ))}
-          </SortableContext>
+          </SortableContextForJSX>
           
           <AddListButton boardId={boardId} />
         </div>
       </div>
 
-      <DragOverlay>
+      <DragOverlayForJSX>
         {activeId ? (
           (() => {
             const activeList = items.find(item => item.list.id === activeId);
@@ -347,7 +349,7 @@ export function BoardContent({ boardId, listsWithCards }: BoardContentProps) {
             );
           })()
         ) : null}
-      </DragOverlay>
+  </DragOverlayForJSX>
     </DndContext>
   );
 }

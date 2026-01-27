@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx init-db.ts && next dev",
-    "build": "tsx init-db.ts && next build",
+  "dev": "tsx init-db.ts && next dev",
+  "build": "tsx init-db.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "init-db": "tsx init-db.ts"

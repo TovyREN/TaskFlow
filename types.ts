@@ -9,7 +9,7 @@ export interface User {
 export interface Tag {
   id: string;
   name: string;
-  color: string; // Tailwind color class suffix, e.g., 'red-500'
+  color: string;
 }
 
 export interface ChecklistItem {
@@ -36,8 +36,8 @@ export interface Task {
   listId: string;
   title: string;
   description?: string;
-  tags: Tag[]; // These are labels applied to the task
-  assignees: string[]; // User IDs
+  tags: Tag[];
+  assignees: string[];
   startDate?: number;
   dueDate?: number;
   isDueDateDone?: boolean;
@@ -51,7 +51,7 @@ export interface TaskList {
   boardId: string;
   title: string;
   order: number;
-  headerColor?: string; // Optional custom background color for list header (e.g., 'bg-red-100')
+  headerColor?: string;
 }
 
 export type Role = 'ADMIN' | 'MEMBER' | 'VIEWER';
@@ -64,15 +64,19 @@ export interface BoardMember {
 export interface Board {
   id: string;
   title: string;
-  color: string; // Tailwind bg class
-  labels: Tag[]; // Available labels for this board
+  color: string;
+  labels: Tag[];
   members: BoardMember[];
   createdAt: number;
 }
 
-export type ViewState = 'LOGIN' | 'REGISTER' | 'DASHBOARD' | 'BOARD';
+export type ViewState =
+  | { type: 'LANDING' }
+  | { type: 'LOGIN' }
+  | { type: 'REGISTER' }
+  | { type: 'DASHBOARD' }
+  | { type: 'BOARD'; boardId: string };
 
-// For DnD
 export interface DragItem {
   id: string;
   type: 'TASK' | 'LIST';

@@ -9,23 +9,95 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum MemberRole {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  password  String?
-  boards    Board[]
-  createdAt DateTime @default(now())
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  name                 String?
+  password             String?
+  ownedWorkspaces      Workspace[]          @relation("WorkspaceOwner")
+  workspaceMemberships WorkspaceMember[]
+  sentInvitations      WorkspaceInvitation[] @relation("InvitationSender")
+  receivedInvitations  WorkspaceInvitation[] @relation("InvitationReceiver")
+  taskAssignments      TaskAssignee[]
+  comments             Comment[]
+  createdAt            DateTime             @default(now())
+}
+
+model Workspace {
+  id          String              @id @default(cuid())
+  name        String
+  description String?
+  color       String?             @default("#3b82f6")
+  ownerId     String
+  owner       User                @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  members     WorkspaceMember[]
+  boards      Board[]
+  invitations WorkspaceInvitation[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        MemberRole @default(MEMBER)
+  joinedAt    DateTime  @default(now())
+
+  @@unique([workspaceId, userId])
+}
+
+model WorkspaceInvitation {
+  id          String           @id @default(cuid())
+  workspaceId String
+  workspace   Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  inviterId   String
+  inviter     User             @relation("InvitationSender", fields: [inviterId], references: [id])
+  inviteeId   String?          // null if invited by email (user not registered yet)
+  invitee     User?            @relation("InvitationReceiver", fields: [inviteeId], references: [id])
+  inviteeEmail String          // email of the invitee
+  role        MemberRole       @default(MEMBER)
+  status      InvitationStatus @default(PENDING)
+  expiresAt   DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@unique([workspaceId, inviteeEmail])
 }
 
 model Board {
-  id        String   @id @default(cuid())
-  title     String
-  color     String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  lists     TaskList[]
-  createdAt DateTime @default(now())
+  id              String       @id @default(cuid())
+  title           String
+  color           String?
+  backgroundImage String?      // URL for custom background image
+  workspaceId     String
+  workspace       Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  lists           TaskList[]
+  labels          BoardLabel[]
+  createdAt       DateTime     @default(now())
+}
+
+model BoardLabel {
+  id        String      @id @default(cuid())
+  name      String
+  color     String
+  boardId   String
+  board     Board       @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks     TaskLabel[]
+  createdAt DateTime    @default(now())
 }
 
 model TaskList {
@@ -39,11 +111,64 @@ model TaskList {
 }
 
 model Task {
-  id          String   @id @default(cuid())
+  id          String         @id @default(cuid())
   title       String
   description String?
-  order       Int      @default(0)
+  order       Int            @default(0)
+  dueDate     DateTime?
   listId      String
-  list        TaskList @relation(fields: [listId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
+  list        TaskList       @relation(fields: [listId], references: [id], onDelete: Cascade)
+  assignees   TaskAssignee[]
+  labels      TaskLabel[]
+  checklists  Checklist[]
+  comments    Comment[]
+  createdAt   DateTime       @default(now())
+}
+
+model TaskAssignee {
+  id     String @id @default(cuid())
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+}
+
+model TaskLabel {
+  id      String     @id @default(cuid())
+  taskId  String
+  task    Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  labelId String
+  label   BoardLabel @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, labelId])
+}
+
+model Checklist {
+  id        String          @id @default(cuid())
+  title     String
+  taskId    String
+  task      Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  items     ChecklistItem[]
+  createdAt DateTime        @default(now())
+}
+
+model ChecklistItem {
+  id          String    @id @default(cuid())
+  title       String
+  isChecked   Boolean   @default(false)
+  order       Int       @default(0)
+  checklistId String
+  checklist   Checklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

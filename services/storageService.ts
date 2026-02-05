@@ -1,4 +1,4 @@
-import { Board, TaskList, Task, User, Tag, Role } from '../types';
+import { Board, TaskList, Task, User, Tag } from '../types';
 
 const STORAGE_KEYS = {
   USER: 'taskflow_user', // Currently logged in user
@@ -89,6 +89,7 @@ export const storageService = {
   // --- Data Seeding ---
 
   seedInitialData: (adminUser: User) => {
+    // NOTE: This is legacy code - boards are now created in workspaces via DB
     // Only seed if empty
     if (localStorage.getItem(STORAGE_KEYS.BOARDS)) return;
 
@@ -99,6 +100,7 @@ export const storageService = {
         color: 'bg-blue-600', 
         labels: DEFAULT_LABELS, 
         members: [{ userId: adminUser.id, role: 'ADMIN' }], 
+        workspaceId: 'legacy-workspace',
         createdAt: Date.now() 
       }
     ];
@@ -137,6 +139,7 @@ export const storageService = {
     return boards.map((b: any) => ({ ...b, members: b.members || [] }));
   },
 
+  // NOTE: This is legacy code - boards are now created in workspaces via DB
   createBoard: (title: string, color: string): Board => {
       const currentUser = storageService.getUser();
       const newBoard: Board = {
@@ -145,6 +148,7 @@ export const storageService = {
           color,
           labels: DEFAULT_LABELS,
           members: currentUser ? [{ userId: currentUser.id, role: 'ADMIN' }] : [],
+          workspaceId: 'legacy-workspace',
           createdAt: Date.now()
       };
       storageService.saveBoard(newBoard);

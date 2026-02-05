@@ -3,8 +3,10 @@
 import React, { useState } from 'react';
 import { Board } from '../types';
 import UserSettings from './UserSettings';
-import { createBoard } from '../app/actions/boardActions';
 import { Plus, X, Layout } from 'lucide-react';
+
+// NOTE: This component is deprecated - WorkspaceList is now used instead
+// Kept for reference but no longer in use
 
 interface DashboardProps {
   boards: Board[];
@@ -23,18 +25,9 @@ export default function Dashboard({ boards, onSelectBoard, onUpdateBoards, userI
     if (!newTitle.trim()) return;
     
     setIsPending(true);
-    // Call the server action to create the board in the DB
-    const result = await createBoard(newTitle, userId);
-    
-    if (result.success && result.board) {
-      // Update local state by adding the new board to the list
-      // We assume the returned board matches the Board type enough for the UI
-      onUpdateBoards([result.board as unknown as Board, ...boards]);
-      setNewTitle('');
-      setIsCreating(false);
-    } else {
-      alert('Failed to create board');
-    }
+    // NOTE: This component is deprecated - use WorkspaceList instead
+    // Board creation now happens through workspaceActions.createBoardInWorkspace
+    alert('This component is deprecated. Please use Workspaces to create boards.');
     setIsPending(false);
   };
 

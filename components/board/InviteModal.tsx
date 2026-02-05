@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { Role } from '../../types';
+import { MemberRole } from '../../types';
 import { User, Shield, Eye, Edit3 } from 'lucide-react';
 
 interface InviteModalProps {
-  onInvite: (email: string, role: Role) => void;
+  onInvite: (email: string, role: MemberRole) => void;
   onClose: () => void;
 }
 
 const InviteModal: React.FC<InviteModalProps> = ({ onInvite, onClose }) => {
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>('MEMBER');
+  const [role, setRole] = useState<MemberRole>('MEMBER');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +19,7 @@ const InviteModal: React.FC<InviteModalProps> = ({ onInvite, onClose }) => {
     }
   };
 
-  const roles: { value: Role; label: string; icon: React.ReactNode; desc: string }[] = [
+  const roles: { value: MemberRole; label: string; icon: React.ReactNode; desc: string }[] = [
     { value: 'ADMIN', label: 'Admin', icon: <Shield className="w-4 h-4" />, desc: 'Can edit board settings and manage members.' },
     { value: 'MEMBER', label: 'Member', icon: <Edit3 className="w-4 h-4" />, desc: 'Can create and edit content.' },
     { value: 'VIEWER', label: 'Viewer', icon: <Eye className="w-4 h-4" />, desc: 'Can only view the board.' },

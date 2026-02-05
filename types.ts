@@ -54,17 +54,53 @@ export interface TaskList {
   headerColor?: string;
 }
 
-export type Role = 'ADMIN' | 'MEMBER' | 'VIEWER';
+export type MemberRole = 'ADMIN' | 'MEMBER' | 'VIEWER';
+
+export interface WorkspaceMember {
+  id: string;
+  userId: string;
+  user: User;
+  role: MemberRole;
+  joinedAt: Date;
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  workspaceId: string;
+  inviterId: string;
+  inviter: User;
+  inviteeId?: string;
+  invitee?: User;
+  inviteeEmail: string;
+  role: MemberRole;
+  status: 'PENDING' | 'ACCEPTED' | 'DECLINED';
+  expiresAt?: Date;
+  createdAt: Date;
+}
+
+export interface Workspace {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  ownerId: string;
+  owner?: User;
+  members?: WorkspaceMember[];
+  boards?: Board[];
+  invitations?: WorkspaceInvitation[];
+  createdAt: Date;
+}
 
 export interface BoardMember {
   userId: string;
-  role: Role;
+  role: MemberRole;
 }
 
 export interface Board {
   id: string;
   title: string;
   color: string;
+  workspaceId: string;
   labels: Tag[];
   members: BoardMember[];
   createdAt: number;
@@ -75,7 +111,8 @@ export type ViewState =
   | { type: 'LOGIN' }
   | { type: 'REGISTER' }
   | { type: 'DASHBOARD' }
-  | { type: 'BOARD'; boardId: string };
+  | { type: 'WORKSPACE'; workspaceId: string }
+  | { type: 'BOARD'; boardId: string; workspaceId: string };
 
 export interface DragItem {
   id: string;

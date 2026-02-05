@@ -42,14 +42,6 @@ export default function LandingPage({ onLoginClick, onRegisterClick }: LandingPa
           Keep everything in the same place—even if your team isn’t.
         </p>
 
-        <form className="flex flex-col sm:flex-row gap-3 w-full max-w-md mb-8" onSubmit={(e) => { e.preventDefault(); onRegisterClick(); }}>
-          <button 
-            type="submit"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded font-semibold transition-colors flex items-center justify-center gap-2"
-          >
-            Register Now
-          </button>
-        </form>
 
         {/* Feature Grid */}
         <div className="grid md:grid-cols-3 gap-8 mt-12 max-w-5xl text-left">

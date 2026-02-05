@@ -54,3 +54,4 @@ fastlane/screenshots
 /generated/prisma
 .env
 /generated/prisma
+.next/*

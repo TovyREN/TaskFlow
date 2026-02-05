@@ -24,5 +24,26 @@ model Board {
   color     String?
   userId    String
   user      User     @relation(fields: [userId], references: [id])
+  lists     TaskList[]
   createdAt DateTime @default(now())
+}
+
+model TaskList {
+  id        String   @id @default(cuid())
+  title     String
+  order     Int
+  boardId   String
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks     Task[]
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  order       Int      @default(0)
+  listId      String
+  list        TaskList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
 }

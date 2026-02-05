@@ -12,6 +12,7 @@ import {
   addChecklistItem, updateChecklistItem, deleteChecklistItem,
   addComment, deleteComment
 } from '../../app/actions/cardActions';
+import { useSocket } from '../SocketProvider';
 
 interface TaskDetailModalProps {
   taskId: string;
@@ -48,9 +49,51 @@ export default function TaskDetailModal({
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
+  const { on, off, isConnected } = useSocket();
+
   useEffect(() => {
     loadTask();
   }, [taskId]);
+
+  // Socket: Listen for real-time updates to this task
+  useEffect(() => {
+    if (!isConnected || !taskId) return;
+
+    const handleTaskChange = (data: any) => {
+      if (data.taskId !== taskId) return;
+      // Reload task to get latest data
+      loadTask();
+    };
+
+    // Listen for all task-related events
+    on('task:updated', handleTaskChange);
+    on('task:label-added', handleTaskChange);
+    on('task:label-removed', handleTaskChange);
+    on('task:assignee-added', handleTaskChange);
+    on('task:assignee-removed', handleTaskChange);
+    on('task:checklist-created', handleTaskChange);
+    on('task:checklist-deleted', handleTaskChange);
+    on('task:checklist-item-added', handleTaskChange);
+    on('task:checklist-item-updated', handleTaskChange);
+    on('task:checklist-item-deleted', handleTaskChange);
+    on('task:comment-added', handleTaskChange);
+    on('task:comment-deleted', handleTaskChange);
+
+    return () => {
+      off('task:updated', handleTaskChange);
+      off('task:label-added', handleTaskChange);
+      off('task:label-removed', handleTaskChange);
+      off('task:assignee-added', handleTaskChange);
+      off('task:assignee-removed', handleTaskChange);
+      off('task:checklist-created', handleTaskChange);
+      off('task:checklist-deleted', handleTaskChange);
+      off('task:checklist-item-added', handleTaskChange);
+      off('task:checklist-item-updated', handleTaskChange);
+      off('task:checklist-item-deleted', handleTaskChange);
+      off('task:comment-added', handleTaskChange);
+      off('task:comment-deleted', handleTaskChange);
+    };
+  }, [taskId, isConnected, on, off]);
 
   const loadTask = async () => {
     setLoading(true);

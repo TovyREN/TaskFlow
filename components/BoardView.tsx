@@ -161,6 +161,13 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
     const handleLabelUpdated = () => loadBoard();
     const handleLabelDeleted = () => loadBoard();
 
+    // Handle task detail changes (labels, assignees, checklists, comments)
+    // These trigger a reload to update task card badges
+    const handleTaskDetailChange = (data: any) => {
+      if (data.boardId !== boardId) return;
+      loadBoard();
+    };
+
     // Register event listeners
     on('list:created', handleListCreated);
     on('task:created', handleTaskCreated);
@@ -173,6 +180,18 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
     on('board:label-created', handleLabelCreated);
     on('board:label-updated', handleLabelUpdated);
     on('board:label-deleted', handleLabelDeleted);
+    // Task detail events
+    on('task:label-added', handleTaskDetailChange);
+    on('task:label-removed', handleTaskDetailChange);
+    on('task:assignee-added', handleTaskDetailChange);
+    on('task:assignee-removed', handleTaskDetailChange);
+    on('task:checklist-created', handleTaskDetailChange);
+    on('task:checklist-deleted', handleTaskDetailChange);
+    on('task:checklist-item-added', handleTaskDetailChange);
+    on('task:checklist-item-updated', handleTaskDetailChange);
+    on('task:checklist-item-deleted', handleTaskDetailChange);
+    on('task:comment-added', handleTaskDetailChange);
+    on('task:comment-deleted', handleTaskDetailChange);
 
     return () => {
       leaveBoard(boardId);
@@ -187,6 +206,18 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
       off('board:label-created', handleLabelCreated);
       off('board:label-updated', handleLabelUpdated);
       off('board:label-deleted', handleLabelDeleted);
+      // Task detail events
+      off('task:label-added', handleTaskDetailChange);
+      off('task:label-removed', handleTaskDetailChange);
+      off('task:assignee-added', handleTaskDetailChange);
+      off('task:assignee-removed', handleTaskDetailChange);
+      off('task:checklist-created', handleTaskDetailChange);
+      off('task:checklist-deleted', handleTaskDetailChange);
+      off('task:checklist-item-added', handleTaskDetailChange);
+      off('task:checklist-item-updated', handleTaskDetailChange);
+      off('task:checklist-item-deleted', handleTaskDetailChange);
+      off('task:comment-added', handleTaskDetailChange);
+      off('task:comment-deleted', handleTaskDetailChange);
     };
   }, [boardId, isConnected, joinBoard, leaveBoard, on, off]);
 

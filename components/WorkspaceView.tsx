@@ -88,12 +88,17 @@ export default function WorkspaceView({ workspaceId, userId, onBack, onSelectBoa
         loadWorkspace();
       }
     };
+    const handleMemberRoleChanged = (data: any) => {
+      if (data.workspaceId !== workspaceId) return;
+      loadWorkspace(); // Reload to get updated permissions
+    };
 
     on('board:created', handleBoardCreated);
     on('board:deleted', handleBoardDeleted);
     on('workspace:updated', handleWorkspaceUpdated);
     on('workspace:member-added', handleMemberAdded);
     on('workspace:member-removed', handleMemberRemoved);
+    on('workspace:member-role-changed', handleMemberRoleChanged);
 
     return () => {
       leaveWorkspace(workspaceId);
@@ -102,6 +107,7 @@ export default function WorkspaceView({ workspaceId, userId, onBack, onSelectBoa
       off('workspace:updated', handleWorkspaceUpdated);
       off('workspace:member-added', handleMemberAdded);
       off('workspace:member-removed', handleMemberRemoved);
+      off('workspace:member-role-changed', handleMemberRoleChanged);
     };
   }, [workspaceId, isConnected, joinWorkspace, leaveWorkspace, on, off, userId, onBack]);
 
@@ -112,10 +118,7 @@ export default function WorkspaceView({ workspaceId, userId, onBack, onSelectBoa
     setIsPending(true);
     const result = await createBoardInWorkspace(workspaceId, newBoardTitle, userId, selectedBoardColor);
     if (result.success && result.board) {
-      setWorkspace((prev: any) => ({
-        ...prev,
-        boards: [result.board, ...(prev?.boards || [])]
-      }));
+      // Socket will handle adding the board to state - no optimistic update
       setNewBoardTitle('');
       setSelectedBoardColor(BOARD_COLORS[0]);
       setIsCreatingBoard(false);

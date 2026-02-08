@@ -2,9 +2,35 @@
 
 import { prisma } from '@/lib/prisma';
 import { emitToBoard } from '@/lib/socket';
+import { MemberRole } from '@/types';
 
 // NOTE: getBoards and createBoard have been moved to workspaceActions.ts
 // since boards now belong to workspaces, not users directly
+
+// Helper to get user's role in the workspace that owns the board
+async function getUserRoleInBoard(boardId: string, userId: string): Promise<MemberRole | null> {
+  try {
+    const board = await prisma.board.findUnique({
+      where: { id: boardId },
+      include: {
+        workspace: {
+          include: {
+            members: { where: { userId } }
+          }
+        }
+      }
+    });
+
+    if (!board) return null;
+    if (board.workspace.ownerId === userId) return 'ADMIN' as MemberRole;
+
+    const member = board.workspace.members[0];
+    return (member?.role as MemberRole) || null;
+  } catch (error) {
+    console.error("Failed to get user role:", error);
+    return null;
+  }
+}
 
 // Fetch a single board with its lists and tasks
 export async function getBoardDetails(boardId: string) {
@@ -53,8 +79,13 @@ export async function getBoardDetails(boardId: string) {
   }
 }
 
-export async function createList(boardId: string, title: string) {
+export async function createList(boardId: string, title: string, userId: string) {
   try {
+    const role = await getUserRoleInBoard(boardId, userId);
+
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot create lists" };
+
     // Find last order to append to the end
     const lastList = await prisma.taskList.findFirst({
       where: { boardId },
@@ -70,10 +101,10 @@ export async function createList(boardId: string, title: string) {
       },
       include: { tasks: true } // Return with empty tasks array for UI
     });
-    
+
     // Emit real-time event
     emitToBoard(boardId, 'list:created', { boardId, list });
-    
+
     return { success: true, list };
   } catch (error) {
     console.error("Failed to create list:", error);
@@ -82,16 +113,21 @@ export async function createList(boardId: string, title: string) {
 }
 
 // Create a new task in a list
-export async function createTask(listId: string, title: string) {
+export async function createTask(listId: string, title: string, userId: string) {
   try {
     // Get the list to find the boardId
     const list = await prisma.taskList.findUnique({
       where: { id: listId },
       select: { boardId: true }
     });
-    
+
     if (!list) return { success: false };
-    
+
+    const role = await getUserRoleInBoard(list.boardId, userId);
+
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot create tasks" };
+
     // Find last order to append to the end
     const lastTask = await prisma.task.findFirst({
       where: { listId },
@@ -120,10 +156,10 @@ export async function createTask(listId: string, title: string) {
         _count: { select: { comments: true } }
       }
     });
-    
+
     // Emit real-time event
     emitToBoard(list.boardId, 'task:created', { boardId: list.boardId, listId, task });
-    
+
     return { success: true, task };
   } catch (error) {
     console.error("Failed to create task:", error);
@@ -132,8 +168,21 @@ export async function createTask(listId: string, title: string) {
 }
 
 // Update a task (title, description)
-export async function updateTask(taskId: string, data: { title?: string; description?: string }) {
+export async function updateTask(taskId: string, data: { title?: string; description?: string }, userId: string) {
   try {
+    // Get boardId first
+    const taskInfo = await prisma.task.findUnique({
+      where: { id: taskId },
+      include: { list: { select: { boardId: true } } }
+    });
+
+    if (!taskInfo) return { success: false };
+
+    const role = await getUserRoleInBoard(taskInfo.list.boardId, userId);
+
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot update tasks" };
+
     const task = await prisma.task.update({
       where: { id: taskId },
       data,
@@ -141,10 +190,10 @@ export async function updateTask(taskId: string, data: { title?: string; descrip
         list: { select: { boardId: true } }
       }
     });
-    
+
     // Emit real-time event
     emitToBoard(task.list.boardId, 'task:updated', { boardId: task.list.boardId, task });
-    
+
     return { success: true, task };
   } catch (error) {
     console.error("Failed to update task:", error);
@@ -153,23 +202,28 @@ export async function updateTask(taskId: string, data: { title?: string; descrip
 }
 
 // Delete a task
-export async function deleteTask(taskId: string) {
+export async function deleteTask(taskId: string, userId: string) {
   try {
     // Get task info before deleting
     const task = await prisma.task.findUnique({
       where: { id: taskId },
       include: { list: { select: { boardId: true } } }
     });
-    
+
     if (!task) return { success: false };
-    
+
+    const role = await getUserRoleInBoard(task.list.boardId, userId);
+
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot delete tasks" };
+
     await prisma.task.delete({
       where: { id: taskId },
     });
-    
+
     // Emit real-time event
     emitToBoard(task.list.boardId, 'task:deleted', { boardId: task.list.boardId, taskId, listId: task.listId });
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to delete task:", error);
@@ -178,16 +232,21 @@ export async function deleteTask(taskId: string) {
 }
 
 // Move task within same list (reorder)
-export async function reorderTasksInList(listId: string, taskIds: string[]) {
+export async function reorderTasksInList(listId: string, taskIds: string[], userId: string) {
   try {
     // Get the list to find boardId
     const list = await prisma.taskList.findUnique({
       where: { id: listId },
       select: { boardId: true }
     });
-    
+
     if (!list) return { success: false };
-    
+
+    const role = await getUserRoleInBoard(list.boardId, userId);
+
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot reorder tasks" };
+
     // Update all tasks with their new order
     await prisma.$transaction(
       taskIds.map((taskId, index) =>
@@ -197,10 +256,10 @@ export async function reorderTasksInList(listId: string, taskIds: string[]) {
         })
       )
     );
-    
+
     // Emit real-time event
     emitToBoard(list.boardId, 'task:reordered', { boardId: list.boardId, listId, taskIds });
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to reorder tasks:", error);
@@ -209,22 +268,27 @@ export async function reorderTasksInList(listId: string, taskIds: string[]) {
 }
 
 // Move task to a different list
-export async function moveTaskToList(taskId: string, targetListId: string, newOrder: number) {
+export async function moveTaskToList(taskId: string, targetListId: string, newOrder: number, userId: string) {
   try {
     // Get the target list to find boardId
     const targetList = await prisma.taskList.findUnique({
       where: { id: targetListId },
       select: { boardId: true }
     });
-    
+
     // Get the source list info
     const sourceTask = await prisma.task.findUnique({
       where: { id: taskId },
       select: { listId: true }
     });
-    
+
     if (!targetList || !sourceTask) return { success: false };
-    
+
+    const role = await getUserRoleInBoard(targetList.boardId, userId);
+
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot move tasks" };
+
     // Update the task's listId and order
     const task = await prisma.task.update({
       where: { id: taskId },
@@ -247,17 +311,17 @@ export async function moveTaskToList(taskId: string, targetListId: string, newOr
         _count: { select: { comments: true } }
       }
     });
-    
+
     // Emit real-time event
-    emitToBoard(targetList.boardId, 'task:moved', { 
-      boardId: targetList.boardId, 
-      taskId, 
-      sourceListId: sourceTask.listId, 
-      targetListId, 
+    emitToBoard(targetList.boardId, 'task:moved', {
+      boardId: targetList.boardId,
+      taskId,
+      sourceListId: sourceTask.listId,
+      targetListId,
       newOrder,
       task
     });
-    
+
     return { success: true, task };
   } catch (error) {
     console.error("Failed to move task:", error);
@@ -266,8 +330,13 @@ export async function moveTaskToList(taskId: string, targetListId: string, newOr
 }
 
 // Reorder lists on a board
-export async function reorderLists(boardId: string, listIds: string[]) {
+export async function reorderLists(boardId: string, listIds: string[], userId: string) {
   try {
+    const role = await getUserRoleInBoard(boardId, userId);
+
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot reorder lists" };
+
     await prisma.$transaction(
       listIds.map((listId, index) =>
         prisma.taskList.update({
@@ -276,13 +345,51 @@ export async function reorderLists(boardId: string, listIds: string[]) {
         })
       )
     );
-    
+
     // Emit real-time event
     emitToBoard(boardId, 'list:reordered', { boardId, listIds });
-    
+
     return { success: true };
   } catch (error) {
     console.error("Failed to reorder lists:", error);
     return { success: false };
+  }
+}
+
+// Get all boards in a workspace
+export async function getWorkspaceBoards(workspaceId: string, userId: string) {
+  try {
+    // Verify user has access to workspace
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      include: {
+        members: { where: { userId } },
+        owner: true
+      }
+    });
+
+    if (!workspace) return [];
+
+    const isOwner = workspace.ownerId === userId;
+    const isMember = workspace.members.length > 0;
+
+    if (!isOwner && !isMember) return [];
+
+    // Fetch all boards in workspace
+    const boards = await prisma.board.findMany({
+      where: { workspaceId },
+      select: {
+        id: true,
+        title: true,
+        color: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return boards;
+  } catch (error) {
+    console.error("Failed to fetch workspace boards:", error);
+    return [];
   }
 }

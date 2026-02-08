@@ -6,12 +6,16 @@ import { User } from '../types';
 interface HeaderProps {
   user: User;
   onLogout: () => void;
+  onLogoClick?: () => void;
 }
 
-export default function Header({ user, onLogout }: HeaderProps) {
+export default function Header({ user, onLogout, onLogoClick }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 z-10">
-      <div className="flex items-center gap-2">
+      <div
+        className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+        onClick={onLogoClick}
+      >
         <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
           <span className="text-white font-bold">T</span>
         </div>

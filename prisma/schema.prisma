@@ -115,6 +115,7 @@ model Task {
   title       String
   description String?
   order       Int            @default(0)
+  startDate   DateTime?
   dueDate     DateTime?
   listId      String
   list        TaskList       @relation(fields: [listId], references: [id], onDelete: Cascade)

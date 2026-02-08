@@ -40,6 +40,7 @@ export default function TaskDetailModal({
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
   const [showLabelDropdown, setShowLabelDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   
   const [addingChecklist, setAddingChecklist] = useState(false);
   const [newChecklistTitle, setNewChecklistTitle] = useState('');
@@ -111,68 +112,110 @@ export default function TaskDetailModal({
       setEditingTitle(false);
       return;
     }
-    await updateTaskDetails(taskId, { title });
-    setTask((prev: any) => ({ ...prev, title }));
-    setEditingTitle(false);
-    onTaskUpdated();
+    const result = await updateTaskDetails(taskId, { title }, userId);
+    if (result.success) {
+      setTask((prev: any) => ({ ...prev, title }));
+      setEditingTitle(false);
+      onTaskUpdated();
+    } else if (result.error) {
+      alert(result.error);
+    }
   };
 
   const handleUpdateDescription = async () => {
-    await updateTaskDetails(taskId, { description });
-    setTask((prev: any) => ({ ...prev, description }));
-    setEditingDescription(false);
-    onTaskUpdated();
+    const result = await updateTaskDetails(taskId, { description }, userId);
+    if (result.success) {
+      setTask((prev: any) => ({ ...prev, description }));
+      setEditingDescription(false);
+      onTaskUpdated();
+    } else if (result.error) {
+      alert(result.error);
+    }
   };
 
   const handleToggleAssignee = async (memberId: string) => {
     const isAssigned = task.assignees?.some((a: any) => a.userId === memberId);
     if (isAssigned) {
-      await removeAssignee(taskId, memberId);
-      setTask((prev: any) => ({
-        ...prev,
-        assignees: prev.assignees.filter((a: any) => a.userId !== memberId)
-      }));
+      const result = await removeAssignee(taskId, memberId, userId);
+      if (result.success) {
+        setTask((prev: any) => ({
+          ...prev,
+          assignees: prev.assignees.filter((a: any) => a.userId !== memberId)
+        }));
+        onTaskUpdated();
+      } else if (result.error) {
+        alert(result.error);
+      }
     } else {
-      await addAssignee(taskId, memberId);
-      const member = task.list.board.workspace.members.find((m: any) => m.userId === memberId);
-      setTask((prev: any) => ({
-        ...prev,
-        assignees: [...prev.assignees, { userId: memberId, user: member?.user }]
-      }));
+      const result = await addAssignee(taskId, memberId, userId);
+      if (result.success) {
+        const member = task.list.board.workspace.members.find((m: any) => m.userId === memberId);
+        setTask((prev: any) => ({
+          ...prev,
+          assignees: [...prev.assignees, { userId: memberId, user: member?.user }]
+        }));
+        onTaskUpdated();
+      } else if (result.error) {
+        alert(result.error);
+      }
     }
-    onTaskUpdated();
   };
 
   const handleToggleLabel = async (labelId: string) => {
     const hasLabel = task.labels?.some((l: any) => l.labelId === labelId);
     if (hasLabel) {
-      await removeLabelFromTask(taskId, labelId);
-      setTask((prev: any) => ({
-        ...prev,
-        labels: prev.labels.filter((l: any) => l.labelId !== labelId)
-      }));
+      const result = await removeLabelFromTask(taskId, labelId, userId);
+      if (result.success) {
+        setTask((prev: any) => ({
+          ...prev,
+          labels: prev.labels.filter((l: any) => l.labelId !== labelId)
+        }));
+        onTaskUpdated();
+      } else if (result.error) {
+        alert(result.error);
+      }
     } else {
-      await addLabelToTask(taskId, labelId);
-      const label = task.list.board.labels.find((l: any) => l.id === labelId);
-      setTask((prev: any) => ({
-        ...prev,
-        labels: [...prev.labels, { labelId, label }]
-      }));
+      const result = await addLabelToTask(taskId, labelId, userId);
+      if (result.success) {
+        const label = task.list.board.labels.find((l: any) => l.id === labelId);
+        setTask((prev: any) => ({
+          ...prev,
+          labels: [...prev.labels, { labelId, label }]
+        }));
+        onTaskUpdated();
+      } else if (result.error) {
+        alert(result.error);
+      }
     }
-    onTaskUpdated();
   };
 
   const handleSetDueDate = async (dateStr: string) => {
     const dueDate = dateStr ? new Date(dateStr) : null;
-    await updateTaskDetails(taskId, { dueDate });
-    setTask((prev: any) => ({ ...prev, dueDate }));
-    setShowDatePicker(false);
-    onTaskUpdated();
+    const result = await updateTaskDetails(taskId, { dueDate }, userId);
+    if (result.success) {
+      setTask((prev: any) => ({ ...prev, dueDate }));
+      setShowDatePicker(false);
+      onTaskUpdated();
+    } else if (result.error) {
+      alert(result.error);
+    }
+  };
+
+  const handleSetStartDate = async (dateStr: string) => {
+    const startDate = dateStr ? new Date(dateStr) : null;
+    const result = await updateTaskDetails(taskId, { startDate }, userId);
+    if (result.success) {
+      setTask((prev: any) => ({ ...prev, startDate }));
+      setShowStartDatePicker(false);
+      onTaskUpdated();
+    } else if (result.error) {
+      alert(result.error);
+    }
   };
 
   const handleAddChecklist = async () => {
     if (newChecklistTitle.trim() === '') return;
-    const result = await createChecklist(taskId, newChecklistTitle);
+    const result = await createChecklist(taskId, newChecklistTitle, userId);
     if (result.success && result.checklist) {
       setTask((prev: any) => ({
         ...prev,
@@ -180,20 +223,26 @@ export default function TaskDetailModal({
       }));
       setNewChecklistTitle('');
       setAddingChecklist(false);
+    } else if (result.error) {
+      alert(result.error);
     }
   };
 
   const handleDeleteChecklist = async (checklistId: string) => {
-    await deleteChecklist(checklistId);
-    setTask((prev: any) => ({
-      ...prev,
-      checklists: prev.checklists.filter((c: any) => c.id !== checklistId)
-    }));
+    const result = await deleteChecklist(checklistId, userId);
+    if (result.success) {
+      setTask((prev: any) => ({
+        ...prev,
+        checklists: prev.checklists.filter((c: any) => c.id !== checklistId)
+      }));
+    } else if (result.error) {
+      alert(result.error);
+    }
   };
 
   const handleAddChecklistItem = async (checklistId: string) => {
     if (newItemTitle.trim() === '') return;
-    const result = await addChecklistItem(checklistId, newItemTitle);
+    const result = await addChecklistItem(checklistId, newItemTitle, userId);
     if (result.success && result.item) {
       setTask((prev: any) => ({
         ...prev,
@@ -205,37 +254,47 @@ export default function TaskDetailModal({
       }));
       setNewItemTitle('');
       setAddingItemToChecklist(null);
+    } else if (result.error) {
+      alert(result.error);
     }
   };
 
   const handleToggleChecklistItem = async (checklistId: string, itemId: string, isChecked: boolean) => {
     const newChecked = !isChecked;
-    await updateChecklistItem(itemId, { isChecked: newChecked });
-    setTask((prev: any) => ({
-      ...prev,
-      checklists: prev.checklists.map((c: any) =>
-        c.id === checklistId
-          ? {
-              ...c,
-              items: c.items.map((i: any) =>
-                i.id === itemId ? { ...i, isChecked: newChecked } : i
-              )
-            }
-          : c
-      )
-    }));
+    const result = await updateChecklistItem(itemId, { isChecked: newChecked }, userId);
+    if (result.success) {
+      setTask((prev: any) => ({
+        ...prev,
+        checklists: prev.checklists.map((c: any) =>
+          c.id === checklistId
+            ? {
+                ...c,
+                items: c.items.map((i: any) =>
+                  i.id === itemId ? { ...i, isChecked: newChecked } : i
+                )
+              }
+            : c
+        )
+      }));
+    } else if (result.error) {
+      alert(result.error);
+    }
   };
 
   const handleDeleteChecklistItem = async (checklistId: string, itemId: string) => {
-    await deleteChecklistItem(itemId);
-    setTask((prev: any) => ({
-      ...prev,
-      checklists: prev.checklists.map((c: any) =>
-        c.id === checklistId
-          ? { ...c, items: c.items.filter((i: any) => i.id !== itemId) }
-          : c
-      )
-    }));
+    const result = await deleteChecklistItem(itemId, userId);
+    if (result.success) {
+      setTask((prev: any) => ({
+        ...prev,
+        checklists: prev.checklists.map((c: any) =>
+          c.id === checklistId
+            ? { ...c, items: c.items.filter((i: any) => i.id !== itemId) }
+            : c
+        )
+      }));
+    } else if (result.error) {
+      alert(result.error);
+    }
   };
 
   const handleAddComment = async () => {
@@ -359,13 +418,24 @@ export default function TaskDetailModal({
               </div>
             )}
 
+            {/* Start Date */}
+            {task.startDate && (
+              <div>
+                <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">Start Date</h4>
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium bg-slate-200 text-slate-700">
+                  <Calendar className="w-4 h-4" />
+                  {formatDate(task.startDate)}
+                </div>
+              </div>
+            )}
+
             {/* Due Date */}
             {task.dueDate && (
               <div>
                 <h4 className="text-xs font-semibold text-slate-500 uppercase mb-2">Due Date</h4>
                 <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium ${
-                  new Date(task.dueDate) < new Date() 
-                    ? 'bg-red-100 text-red-700' 
+                  new Date(task.dueDate) < new Date()
+                    ? 'bg-red-100 text-red-700'
                     : 'bg-slate-200 text-slate-700'
                 }`}>
                   <Clock className="w-4 h-4" />
@@ -706,6 +776,35 @@ export default function TaskDetailModal({
                   <CheckSquare className="w-4 h-4" />
                   Checklist
                 </button>
+              )}
+            </div>
+
+            {/* Start Date */}
+            <div className="relative">
+              <button
+                onClick={() => setShowStartDatePicker(!showStartDatePicker)}
+                className="w-full flex items-center gap-2 px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded text-sm text-slate-700 font-medium transition-colors"
+              >
+                <Calendar className="w-4 h-4" />
+                Start Date
+              </button>
+              {showStartDatePicker && (
+                <div className="absolute top-full mt-1 left-0 w-56 bg-white rounded-lg shadow-xl border z-10 p-3">
+                  <input
+                    type="date"
+                    className="w-full p-2 border border-slate-300 rounded text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    value={task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : ''}
+                    onChange={e => handleSetStartDate(e.target.value)}
+                  />
+                  {task.startDate && (
+                    <button
+                      onClick={() => handleSetStartDate('')}
+                      className="w-full mt-2 px-3 py-1.5 text-red-600 hover:bg-red-50 rounded text-sm"
+                    >
+                      Remove start date
+                    </button>
+                  )}
+                </div>
               )}
             </div>
 

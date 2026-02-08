@@ -3,12 +3,14 @@
 import React, { useState } from 'react';
 import { User } from '../types';
 import { loginUser } from '../app/actions/authActions';
+import { ArrowLeft } from 'lucide-react';
 
 interface LoginProps {
   onLogin: (user: User) => void;
+  onBack?: () => void;
 }
 
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({ onLogin, onBack }: LoginProps) {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -36,6 +38,16 @@ export default function Login({ onLogin }: LoginProps) {
   return (
     <div className="flex h-screen items-center justify-center bg-gray-100">
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96 animate-fade-in">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Home
+          </button>
+        )}
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">TaskFlow Login</h2>
         
         {error && (

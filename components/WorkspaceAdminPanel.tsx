@@ -1,15 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { 
-  X, Settings, Users, Mail, Crown, Shield, Eye, Trash2, 
+import {
+  X, Settings, Users, Mail, Crown, Shield, Eye, Trash2,
   UserPlus, ChevronDown, AlertTriangle, Loader2, Check
 } from 'lucide-react';
-import { 
+import {
   getWorkspaceDetails, updateWorkspace, deleteWorkspace,
   updateMemberRole, removeMember, createInvitation, cancelInvitation
 } from '../app/actions/workspaceActions';
 import { MemberRole } from '../types';
+import { useSocket } from './SocketProvider';
 
 interface WorkspaceAdminPanelProps {
   workspaceId: string;
@@ -58,10 +59,57 @@ export default function WorkspaceAdminPanel({
   const [roleDropdownMemberId, setRoleDropdownMemberId] = useState<string | null>(null);
 
   const isOwner = workspace?.ownerId === userId;
+  const { joinWorkspace, leaveWorkspace, on, off, isConnected } = useSocket();
 
   useEffect(() => {
     loadWorkspace();
   }, [workspaceId, userId]);
+
+  // Socket: Join workspace room and listen for real-time updates
+  useEffect(() => {
+    if (!isConnected || !workspaceId) return;
+
+    joinWorkspace(workspaceId);
+
+    // Handle member role changed
+    const handleMemberRoleChanged = (data: any) => {
+      if (data.workspaceId !== workspaceId) return;
+      loadWorkspace(); // Reload workspace data
+    };
+
+    // Handle member added
+    const handleMemberAdded = (data: any) => {
+      if (data.workspaceId !== workspaceId) return;
+      loadWorkspace();
+    };
+
+    // Handle member removed
+    const handleMemberRemoved = (data: any) => {
+      if (data.workspaceId !== workspaceId) return;
+      loadWorkspace();
+    };
+
+    // Handle invitation created/cancelled
+    const handleInvitationChange = (data: any) => {
+      if (data.workspaceId !== workspaceId) return;
+      loadWorkspace();
+    };
+
+    on('workspace:member-role-changed', handleMemberRoleChanged);
+    on('workspace:member-added', handleMemberAdded);
+    on('workspace:member-removed', handleMemberRemoved);
+    on('workspace:invitation-created', handleInvitationChange);
+    on('workspace:invitation-cancelled', handleInvitationChange);
+
+    return () => {
+      leaveWorkspace(workspaceId);
+      off('workspace:member-role-changed', handleMemberRoleChanged);
+      off('workspace:member-added', handleMemberAdded);
+      off('workspace:member-removed', handleMemberRemoved);
+      off('workspace:invitation-created', handleInvitationChange);
+      off('workspace:invitation-cancelled', handleInvitationChange);
+    };
+  }, [workspaceId, isConnected, joinWorkspace, leaveWorkspace, on, off]);
 
   const loadWorkspace = async () => {
     setLoading(true);

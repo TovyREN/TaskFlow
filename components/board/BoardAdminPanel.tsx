@@ -12,6 +12,7 @@ import {
 
 interface BoardAdminPanelProps {
   boardId: string;
+  userId: string;
   onClose: () => void;
   onBoardUpdated: () => void;
 }
@@ -34,7 +35,7 @@ const PRESET_BACKGROUNDS = [
   { type: 'gradient', value: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', name: 'Mint' },
 ];
 
-export default function BoardAdminPanel({ boardId, onClose, onBoardUpdated }: BoardAdminPanelProps) {
+export default function BoardAdminPanel({ boardId, userId, onClose, onBoardUpdated }: BoardAdminPanelProps) {
   const [board, setBoard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'background' | 'labels'>('background');
@@ -71,16 +72,18 @@ export default function BoardAdminPanel({ boardId, onClose, onBoardUpdated }: Bo
   };
 
   const handleSetBackground = async (background: string) => {
-    const result = await updateBoardSettings(boardId, { backgroundImage: background });
+    const result = await updateBoardSettings(boardId, { backgroundImage: background }, userId);
     if (result.success) {
       setBoard((prev: any) => ({ ...prev, backgroundImage: background }));
       onBoardUpdated();
+    } else if (result.error) {
+      alert(result.error);
     }
   };
 
   const handleCreateLabel = async () => {
     if (newLabelName.trim() === '') return;
-    const result = await createBoardLabel(boardId, newLabelName, newLabelColor);
+    const result = await createBoardLabel(boardId, newLabelName, newLabelColor, userId);
     if (result.success && result.label) {
       setBoard((prev: any) => ({
         ...prev,
@@ -90,12 +93,14 @@ export default function BoardAdminPanel({ boardId, onClose, onBoardUpdated }: Bo
       setNewLabelColor('#3b82f6');
       setCreatingLabel(false);
       onBoardUpdated();
+    } else if (result.error) {
+      alert(result.error);
     }
   };
 
   const handleUpdateLabel = async (labelId: string) => {
     if (editLabelName.trim() === '') return;
-    const result = await updateBoardLabel(labelId, { name: editLabelName, color: editLabelColor });
+    const result = await updateBoardLabel(labelId, { name: editLabelName, color: editLabelColor }, userId);
     if (result.success) {
       setBoard((prev: any) => ({
         ...prev,
@@ -105,17 +110,21 @@ export default function BoardAdminPanel({ boardId, onClose, onBoardUpdated }: Bo
       }));
       setEditingLabel(null);
       onBoardUpdated();
+    } else if (result.error) {
+      alert(result.error);
     }
   };
 
   const handleDeleteLabel = async (labelId: string) => {
-    const result = await deleteBoardLabel(labelId);
+    const result = await deleteBoardLabel(labelId, userId);
     if (result.success) {
       setBoard((prev: any) => ({
         ...prev,
         labels: prev.labels.filter((l: any) => l.id !== labelId)
       }));
       onBoardUpdated();
+    } else if (result.error) {
+      alert(result.error);
     }
   };
 

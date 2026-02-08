@@ -229,6 +229,13 @@ export async function updateMemberRole(
       data: { role: newRole }
     });
 
+    // Emit real-time event
+    emitToWorkspace(workspaceId, 'workspace:member-role-changed', {
+      workspaceId,
+      userId: targetUserId,
+      newRole
+    });
+
     return { success: true };
   } catch (error) {
     console.error("Failed to update member role:", error);

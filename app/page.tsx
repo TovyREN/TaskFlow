@@ -22,16 +22,23 @@ export default function TrelloPage() {
   // Start on LANDING by default
   const [viewState, setViewState] = useState<ViewState>({ type: 'LANDING' });
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Admin panel state
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [adminWorkspaceId, setAdminWorkspaceId] = useState<string | null>(null);
+
+  // Save viewState to sessionStorage when it changes
+  useEffect(() => {
+    if (!isLoading && viewState.type !== 'LANDING') {
+      sessionStorage.setItem('taskflow_viewState', JSON.stringify(viewState));
+    }
+  }, [viewState, isLoading]);
 
   useEffect(() => {
     const initApp = async () => {
       try {
         const currentUser = storageService.getUser();
-        
+
         if (currentUser) {
           setUser(currentUser);
           const [dbWorkspaces, invitations] = await Promise.all([
@@ -40,9 +47,36 @@ export default function TrelloPage() {
           ]);
           setWorkspaces(dbWorkspaces);
           setPendingInvitations(invitations);
-          setViewState({ type: 'DASHBOARD' });
+
+          // Restore previous viewState if exists
+          const savedViewState = sessionStorage.getItem('taskflow_viewState');
+          if (savedViewState) {
+            try {
+              const parsedViewState = JSON.parse(savedViewState);
+              setViewState(parsedViewState);
+            } catch {
+              setViewState({ type: 'DASHBOARD' });
+            }
+          } else {
+            setViewState({ type: 'DASHBOARD' });
+          }
         } else {
-          setViewState({ type: 'LANDING' });
+          // Restore viewState for non-authenticated pages (LOGIN, REGISTER)
+          const savedViewState = sessionStorage.getItem('taskflow_viewState');
+          if (savedViewState) {
+            try {
+              const parsedViewState = JSON.parse(savedViewState);
+              if (parsedViewState.type === 'LOGIN' || parsedViewState.type === 'REGISTER') {
+                setViewState(parsedViewState);
+              } else {
+                setViewState({ type: 'LANDING' });
+              }
+            } catch {
+              setViewState({ type: 'LANDING' });
+            }
+          } else {
+            setViewState({ type: 'LANDING' });
+          }
         }
       } catch (error) {
         console.error("Failed to initialize app:", error);
@@ -79,6 +113,7 @@ export default function TrelloPage() {
 
   const handleLogout = () => {
     storageService.logout();
+    sessionStorage.removeItem('taskflow_viewState'); // Clear saved view state
     setUser(null);
     setWorkspaces([]);
     setPendingInvitations([]);
@@ -135,23 +170,33 @@ export default function TrelloPage() {
   // 2. Register View
   if (!user && viewState.type === 'REGISTER') {
     return (
-      <Register 
+      <Register
         onSwitchToLogin={() => setViewState({ type: 'LOGIN' })}
         onRegisterSuccess={handleLogin}
+        onBack={() => setViewState({ type: 'LANDING' })}
       />
     );
   }
 
   // 3. Login View
   if (!user || viewState.type === 'LOGIN') {
-    return <Login onLogin={handleLogin} />;
+    return (
+      <Login
+        onLogin={handleLogin}
+        onBack={() => setViewState({ type: 'LANDING' })}
+      />
+    );
   }
 
   // 4. Authenticated Views
   return (
     <SocketProvider userId={user.id}>
       <div className="flex h-screen bg-gray-50 overflow-hidden flex-col">
-        <Header user={user} onLogout={handleLogout} />
+        <Header
+          user={user}
+          onLogout={handleLogout}
+          onLogoClick={() => setViewState({ type: 'DASHBOARD' })}
+        />
         <main className="flex-1 overflow-y-auto relative">
           {viewState.type === 'DASHBOARD' ? (
             <WorkspaceList 
@@ -170,8 +215,9 @@ export default function TrelloPage() {
               onOpenAdmin={() => handleOpenAdmin(viewState.workspaceId)}
             />
           ) : viewState.type === 'BOARD' ? (
-            <BoardView 
+            <BoardView
               boardId={viewState.boardId}
+              workspaceId={viewState.workspaceId}
               userId={user.id}
               isAdmin={(() => {
                 const workspace = workspaces.find((w: any) => w.id === viewState.workspaceId);
@@ -179,6 +225,9 @@ export default function TrelloPage() {
                 return member?.role === 'ADMIN' || member?.role === 'OWNER';
               })()}
               onBack={() => setViewState({ type: 'WORKSPACE', workspaceId: viewState.workspaceId })}
+              onSwitchBoard={(newBoardId) => {
+                setViewState({ type: 'BOARD', boardId: newBoardId, workspaceId: viewState.workspaceId });
+              }}
             />
           ) : null}
         </main>

@@ -2,17 +2,21 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { getBoardDetails, createList, createTask, reorderTasksInList, moveTaskToList, reorderLists } from '../app/actions/boardActions';
-import { Plus, Loader2, X, Settings, Clock, Users, CheckSquare, MessageSquare } from 'lucide-react';
+import { getBoardDetails, createList, createTask, reorderTasksInList, moveTaskToList, reorderLists, getWorkspaceBoards } from '../app/actions/boardActions';
+import { Plus, Loader2, X, Settings, Clock, Users, CheckSquare, MessageSquare, Calendar, Grid } from 'lucide-react';
 import { TaskList as TaskListType, Task } from '../types';
 import TaskDetailModal from './board/TaskDetailModal';
 import BoardAdminPanel from './board/BoardAdminPanel';
+import GanttView from './board/GanttView';
+import BoardTabs from './board/BoardTabs';
 import { useSocket } from './SocketProvider';
 
 interface BoardViewProps {
   boardId: string;
   userId: string;
+  workspaceId: string;
   onBack: () => void;
+  onSwitchBoard: (boardId: string) => void;
   isAdmin?: boolean;
 }
 
@@ -25,7 +29,7 @@ type DBBoard = {
   lists: any[];
 };
 
-export default function BoardView({ boardId, userId, onBack, isAdmin = false }: BoardViewProps) {
+export default function BoardView({ boardId, userId, workspaceId, onBack, onSwitchBoard, isAdmin = false }: BoardViewProps) {
   const [board, setBoard] = useState<DBBoard | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAddingList, setIsAddingList] = useState(false);
@@ -34,6 +38,8 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [viewMode, setViewMode] = useState<'kanban' | 'gantt'>('kanban');
+  const [workspaceBoards, setWorkspaceBoards] = useState<any[]>([]);
 
   const { joinBoard, leaveBoard, on, off, isConnected } = useSocket();
 
@@ -49,6 +55,15 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
   useEffect(() => {
     loadBoard();
   }, [boardId]);
+
+  // Load workspace boards
+  useEffect(() => {
+    const loadWorkspaceBoards = async () => {
+      const boards = await getWorkspaceBoards(workspaceId, userId);
+      setWorkspaceBoards(boards);
+    };
+    loadWorkspaceBoards();
+  }, [workspaceId, userId]);
 
   // Socket: Join board room and listen for real-time updates
   useEffect(() => {
@@ -193,6 +208,26 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
     on('task:comment-added', handleTaskDetailChange);
     on('task:comment-deleted', handleTaskDetailChange);
 
+    // Handle board created in workspace
+    const handleBoardCreatedInWorkspace = (data: any) => {
+      if (data.workspaceId !== workspaceId) return;
+      setWorkspaceBoards(prev => [data.board, ...prev]);
+    };
+
+    // Handle board deleted from workspace
+    const handleBoardDeletedFromWorkspace = (data: any) => {
+      if (data.workspaceId !== workspaceId) return;
+      setWorkspaceBoards(prev => prev.filter(b => b.id !== data.boardId));
+
+      // If current board deleted, go back
+      if (data.boardId === boardId) {
+        onBack();
+      }
+    };
+
+    on('board:created', handleBoardCreatedInWorkspace);
+    on('board:deleted', handleBoardDeletedFromWorkspace);
+
     return () => {
       leaveBoard(boardId);
       off('list:created', handleListCreated);
@@ -218,14 +253,16 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
       off('task:checklist-item-deleted', handleTaskDetailChange);
       off('task:comment-added', handleTaskDetailChange);
       off('task:comment-deleted', handleTaskDetailChange);
+      off('board:created', handleBoardCreatedInWorkspace);
+      off('board:deleted', handleBoardDeletedFromWorkspace);
     };
-  }, [boardId, isConnected, joinBoard, leaveBoard, on, off]);
+  }, [boardId, workspaceId, isConnected, joinBoard, leaveBoard, on, off, onBack]);
 
   const handleAddList = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListTitle.trim() || !board) return;
 
-    const result = await createList(board.id, newListTitle);
+    const result = await createList(board.id, newListTitle, userId);
     if (result.success && result.list) {
       setBoard({
         ...board,
@@ -233,24 +270,28 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
       });
       setNewListTitle('');
       setIsAddingList(false);
+    } else if (result.error) {
+      alert(result.error);
     }
   };
 
   const handleAddTask = async (listId: string) => {
     if (!newTaskTitle.trim() || !board) return;
 
-    const result = await createTask(listId, newTaskTitle);
+    const result = await createTask(listId, newTaskTitle, userId);
     if (result.success && result.task) {
       setBoard({
         ...board,
-        lists: board.lists.map((list: any) => 
-          list.id === listId 
+        lists: board.lists.map((list: any) =>
+          list.id === listId
             ? { ...list, tasks: [...list.tasks, result.task] }
             : list
         )
       });
       setNewTaskTitle('');
       setAddingTaskToListId(null);
+    } else if (result.error) {
+      alert(result.error);
     }
   };
 
@@ -275,7 +316,12 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
       setBoard({ ...board, lists: newLists });
 
       // Persist to DB
-      await reorderLists(board.id, newLists.map(l => l.id));
+      const result = await reorderLists(board.id, newLists.map(l => l.id), userId);
+      if (result.error) {
+        alert(result.error);
+        // Reload board on error
+        loadBoard();
+      }
       return;
     }
 
@@ -294,13 +340,17 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
       // Optimistic update
       setBoard({
         ...board,
-        lists: board.lists.map((l: any) => 
+        lists: board.lists.map((l: any) =>
           l.id === sourceList.id ? { ...l, tasks: newTasks } : l
         )
       });
 
       // Persist to DB
-      await reorderTasksInList(sourceList.id, newTasks.map((t: any) => t.id));
+      const result = await reorderTasksInList(sourceList.id, newTasks.map((t: any) => t.id), userId);
+      if (result.error) {
+        alert(result.error);
+        loadBoard();
+      }
     } else {
       // Moving to a different list
       const sourceTasks = Array.from(sourceList.tasks) as any[];
@@ -319,9 +369,14 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
       });
 
       // Persist to DB - move the task and update orders
-      await moveTaskToList(movedTask.id, destList.id, destination.index);
-      await reorderTasksInList(sourceList.id, sourceTasks.map((t: any) => t.id));
-      await reorderTasksInList(destList.id, destTasks.map((t: any) => t.id));
+      const moveResult = await moveTaskToList(movedTask.id, destList.id, destination.index, userId);
+      if (moveResult.error) {
+        alert(moveResult.error);
+        loadBoard();
+        return;
+      }
+      await reorderTasksInList(sourceList.id, sourceTasks.map((t: any) => t.id), userId);
+      await reorderTasksInList(destList.id, destTasks.map((t: any) => t.id), userId);
     }
   };
 
@@ -355,27 +410,58 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
       }}
     >
       {/* Header */}
-      <div className="p-4 flex items-center gap-4 bg-white/50 backdrop-blur-md border-b shrink-0">
-        <button 
-          onClick={onBack}
-          className="text-slate-600 hover:text-slate-900 font-medium px-3 py-1 hover:bg-black/5 rounded transition-colors"
-        >
-          ← Back
-        </button>
-        <h2 className="text-xl font-bold text-slate-800 flex-1">{board.title}</h2>
-        {isAdmin && (
+      <div className="bg-white/50 backdrop-blur-md border-b shrink-0">
+        {/* Board Tabs */}
+        <BoardTabs
+          boards={workspaceBoards}
+          currentBoardId={boardId}
+          onBoardSelect={onSwitchBoard}
+        />
+
+        {/* Header Row */}
+        <div className="p-4 flex items-center gap-4">
           <button
-            onClick={() => setShowAdminPanel(true)}
+            onClick={onBack}
+            className="text-slate-600 hover:text-slate-900 font-medium px-3 py-1 hover:bg-black/5 rounded transition-colors"
+          >
+            ← Back
+          </button>
+          <h2 className="text-xl font-bold text-slate-800 flex-1">{board.title}</h2>
+
+          {/* View Toggle Button */}
+          <button
+            onClick={() => setViewMode(viewMode === 'kanban' ? 'gantt' : 'kanban')}
             className="flex items-center gap-2 px-3 py-1.5 bg-white/60 hover:bg-white/80 rounded-lg text-slate-700 text-sm font-medium transition-colors"
           >
-            <Settings className="w-4 h-4" />
-            Settings
+            {viewMode === 'kanban' ? (
+              <>
+                <Calendar className="w-4 h-4" />
+                Timeline
+              </>
+            ) : (
+              <>
+                <Grid className="w-4 h-4" />
+                Board
+              </>
+            )}
           </button>
-        )}
+
+          {isAdmin && (
+            <button
+              onClick={() => setShowAdminPanel(true)}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white/60 hover:bg-white/80 rounded-lg text-slate-700 text-sm font-medium transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              Settings
+            </button>
+          )}
+        </div>
       </div>
-      
-      {/* Horizontal Scroll Area with Drag and Drop */}
-      <DragDropContext onDragEnd={handleDragEnd}>
+
+      {/* Main Content - Conditional Rendering */}
+      {viewMode === 'kanban' ? (
+        /* Horizontal Scroll Area with Drag and Drop */
+        <DragDropContext onDragEnd={handleDragEnd}>
         <Droppable droppableId="all-lists" direction="horizontal" type="LIST">
           {(provided) => (
             <div 
@@ -570,6 +656,16 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
           )}
         </Droppable>
       </DragDropContext>
+      ) : (
+        /* Timeline View */
+        <GanttView
+          boardId={boardId}
+          userId={userId}
+          board={board}
+          onClose={() => setViewMode('kanban')}
+          onTaskClick={(taskId) => setSelectedTaskId(taskId)}
+        />
+      )}
 
       {/* Task Detail Modal */}
       {selectedTaskId && (
@@ -586,6 +682,7 @@ export default function BoardView({ boardId, userId, onBack, isAdmin = false }: 
       {showAdminPanel && (
         <BoardAdminPanel
           boardId={boardId}
+          userId={userId}
           onClose={() => setShowAdminPanel(false)}
           onBoardUpdated={loadBoard}
         />

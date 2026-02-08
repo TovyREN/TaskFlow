@@ -26,6 +26,8 @@ model User {
   email                String               @unique
   name                 String?
   password             String?
+  googleId             String?              @unique
+  googleImage          String?
   ownedWorkspaces      Workspace[]          @relation("WorkspaceOwner")
   workspaceMemberships WorkspaceMember[]
   sentInvitations      WorkspaceInvitation[] @relation("InvitationSender")

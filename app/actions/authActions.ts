@@ -93,3 +93,79 @@ export async function registerUser(name: string, email: string, password: string
     return { success: false, error: "Registration failed" };
   }
 }
+
+export async function loginWithGoogle(googleToken: string) {
+  try {
+    const { OAuth2Client } = await import('google-auth-library');
+    
+    const client = new OAuth2Client(
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+
+    // Verify the token
+    const ticket = await client.verifyIdToken({
+      idToken: googleToken,
+      audience: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    if (!payload) {
+      return { success: false, error: "Invalid token" };
+    }
+
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return { success: false, error: "Email not found in Google profile" };
+    }
+
+    // Check if user exists with this googleId
+    let user = await prisma.user.findUnique({
+      where: { googleId: googleId as string },
+    });
+
+    // If not, try to find by email
+    if (!user) {
+      user = await prisma.user.findUnique({
+        where: { email },
+      });
+
+      // If user exists with same email but no googleId, link the Google account
+      if (user) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: googleId as string,
+            googleImage: picture as string,
+          },
+        });
+      }
+    }
+
+    // If still no user, create a new one
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: name || email.split('@')[0],
+          googleId: googleId as string,
+          googleImage: picture as string,
+        },
+      });
+    }
+
+    return {
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name || email.split('@')[0],
+        avatar: user.googleImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`,
+      },
+    };
+  } catch (error) {
+    console.error("Google OAuth error:", error);
+    return { success: false, error: "Google authentication failed" };
+  }
+}

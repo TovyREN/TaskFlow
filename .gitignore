@@ -39,3 +39,5 @@ fastlane/screenshots
 .env
 /generated/prisma
 .next/*
+next-env.d.ts
+tsconfig.tsbuildinfo

@@ -43,10 +43,3 @@ jobs:
       - name: Run tests (if configured)
         run: npm test 2>/dev/null || echo "No tests configured"
         continue-on-error: true
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: next-build
-          path: .next/
-          retention-days: 1

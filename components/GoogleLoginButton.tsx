@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useCallback } from "react";
-import { GoogleLogin } from "@react-oauth/google";
+import React, { useEffect, useCallback, useRef } from "react";
 import { loginWithGoogle } from "@/app/actions/authActions";
 import { User } from "@/types";
 
@@ -11,11 +10,19 @@ interface GoogleLoginButtonProps {
   disabled?: boolean;
 }
 
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
+
 export default function GoogleLoginButton({
   onLogin,
   onError,
   disabled = false,
 }: GoogleLoginButtonProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const handleSuccess = useCallback(
     async (credentialResponse: any) => {
       try {
@@ -38,6 +45,25 @@ export default function GoogleLoginButton({
     onError?.("Google login failed");
   }, [onError]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.google) {
+      try {
+        window.google.accounts.id.renderButton(containerRef.current, {
+          theme: "outline",
+          size: "large",
+          width: "100%",
+        });
+
+        window.google.accounts.id.setup({
+          client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+          callback: handleSuccess,
+        });
+      } catch (error) {
+        console.error("Error initializing Google Sign-In:", error);
+      }
+    }
+  }, [handleSuccess]);
+
   return (
     <div className="mt-4">
       <div className="relative mb-4">
@@ -49,10 +75,7 @@ export default function GoogleLoginButton({
         </div>
       </div>
       <div className={disabled ? "opacity-50 pointer-events-none" : ""}>
-        <GoogleLogin
-          onSuccess={handleSuccess}
-          onError={handleError}
-        />
+        <div ref={containerRef} className="flex justify-center" />
       </div>
     </div>
   );

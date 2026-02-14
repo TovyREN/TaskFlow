@@ -25,4 +25,5 @@
    `sudo docker compose exec app npx prisma studio --port 5555 --browser none`
 
 2. sync the changes with:
-   `sudo docker compose exec app npx prisma generate \n sudo docker compose exec app npx prisma db push`
+   `sudo docker compose exec app npx prisma generate |
+    sudo docker compose exec app npx prisma db push`

@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { loginUser } from '../app/actions/authActions';
 import { ArrowLeft } from 'lucide-react';
 import GoogleLoginButton from './GoogleLoginButton';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -13,6 +12,18 @@ interface LoginProps {
 }
 
 export default function Login({ onLogin, onBack }: LoginProps) {
+  useEffect(() => {
+    // Load Google Sign-In script
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -39,8 +50,7 @@ export default function Login({ onLogin, onBack }: LoginProps) {
 
   return (
     <div className="flex h-screen items-center justify-center bg-gray-100">
-      <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''}>
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96 animate-fade-in">
+      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96 animate-fade-in">
           {onBack && (
             <button
               type="button"
@@ -103,7 +113,6 @@ export default function Login({ onLogin, onBack }: LoginProps) {
             disabled={isPending}
           />
         </form>
-      </GoogleOAuthProvider>
-    </div>
-  );
-}
+      </div>
+    );
+  }

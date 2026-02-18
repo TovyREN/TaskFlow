@@ -42,12 +42,12 @@ User can create boards, manager cards, assign member, comment, set due date and 
 
 ## Technologies
 
-Frontend : Next.js (React, TypeScript)
-Backend : Node.js / API REST
-Database : PostgreSQL
-Authentification : OAuth2 + JWT
-Real Time interaction : WebSockets
-Drag & Drop : dnd-kit
+Frontend : Next.js (React, TypeScript)\
+Backend : Node.js / API REST\
+Database : PostgreSQL\
+Authentification : OAuth2 + JWT\
+Real Time interaction : WebSockets\
+Drag & Drop : dnd-kit\
 Deployment : Fly.io
 
 ---
@@ -71,6 +71,8 @@ Deployment : Fly.io
 
 - [User Guide](./docs/USER_GUIDE.md)
 - [Commit Format](./docs/COMMIT_FORMAT.md.md)
+
+---
 
 ## Architecture
 

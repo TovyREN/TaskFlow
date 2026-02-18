@@ -1,3 +1,10 @@
+## TaskFlow
+
+TaskFlow is web application inspired by Trello, an app that help project management with the help of Kanban boars.
+User can create boards, manager cards, assign member, comment, set due date and collaborate in real time in TaskFlow.
+
+---
+
 ## Run Locally
 
 **Prerequisites:**  Node.js
@@ -27,3 +34,41 @@
 2. sync the changes with:
    `sudo docker compose exec app npx prisma generate |
     sudo docker compose exec app npx prisma db push`
+
+---
+
+## Technologies
+
+Frontend : Next.js (React, TypeScript)
+Backend : Node.js / API REST
+Database : PostgreSQL
+Authentification : OAuth2 + JWT
+Real Time interaction : WebSockets
+Drag & Drop : dnd-kit
+Deployment : Fly.io
+
+---
+
+## Features
+
+- Authentification
+- Board Creation
+- Lists & Cards
+- Drag & Drop
+- Labels
+- Due Dates
+- Commentaries
+- Permission management
+- Real Time interaction
+- Gantt Diagram
+
+---
+
+## Architecture
+
+`Client (Next.js)
+   ↓
+API REST
+   ↓
+PostgreSQL`
+

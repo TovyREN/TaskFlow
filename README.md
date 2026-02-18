@@ -67,6 +67,11 @@ Deployment : Fly.io
 
 ---
 
+## Documentation
+
+- [User Guide](./docs/USER_GUIDE.md)
+- [Commit Format](./docs/COMMIT_FORMAT.md.md)
+
 ## Architecture
 
 `Client (Next.js) →

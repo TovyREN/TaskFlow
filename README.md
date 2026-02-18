@@ -66,7 +66,7 @@ Deployment : Fly.io
 
 ## Architecture
 
-`Client (Next.js)→
-API REST<br>→
+`Client (Next.js) →
+API REST →
 PostgreSQL`
 

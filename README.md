@@ -3,6 +3,9 @@
 TaskFlow is web application inspired by Trello, an app that help project management with the help of Kanban boars.
 User can create boards, manager cards, assign member, comment, set due date and collaborate in real time in TaskFlow.
 
+![Worskpace](img/Workspace.png)
+![Board](img/Board.png)
+
 ---
 
 ## Run Locally

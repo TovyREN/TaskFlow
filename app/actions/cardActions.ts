@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { emitToBoard } from '@/lib/socket';
 import { MemberRole } from '@/types';
+import { createNotification } from './notificationActions';
 
 // Helper to get boardId from taskId
 async function getBoardIdFromTask(taskId: string): Promise<string | null> {
@@ -174,6 +175,27 @@ export async function addAssignee(taskId: string, assigneeUserId: string, curren
     });
 
     emitToBoard(boardId, 'task:assignee-added', { boardId, taskId, userId: assigneeUserId });
+
+    // Create notification for the assigned user (skip self-assignment)
+    if (assigneeUserId !== currentUserId) {
+      const task = await prisma.task.findUnique({
+        where: { id: taskId },
+        select: {
+          title: true,
+          list: { select: { board: { select: { title: true } } } }
+        }
+      });
+
+      if (task) {
+        await createNotification({
+          type: 'TASK_ASSIGNED',
+          message: `Vous avez été assigné à "${task.title}" (Board: ${task.list.board.title})`,
+          userId: assigneeUserId,
+          taskId,
+          actorId: currentUserId,
+        });
+      }
+    }
 
     return { success: true };
   } catch (error) {

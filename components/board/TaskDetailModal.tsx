@@ -41,9 +41,17 @@ export default function TaskDetailModal({
   const [showLabelDropdown, setShowLabelDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  
+
   const [addingChecklist, setAddingChecklist] = useState(false);
   const [newChecklistTitle, setNewChecklistTitle] = useState('');
+
+  const closeAllDropdowns = () => {
+    setShowAssigneeDropdown(false);
+    setShowLabelDropdown(false);
+    setShowDatePicker(false);
+    setShowStartDatePicker(false);
+    setAddingChecklist(false);
+  };
   const [addingItemToChecklist, setAddingItemToChecklist] = useState<string | null>(null);
   const [newItemTitle, setNewItemTitle] = useState('');
   
@@ -672,7 +680,7 @@ export default function TaskDetailModal({
             {/* Members */}
             <div className="relative">
               <button
-                onClick={() => setShowAssigneeDropdown(!showAssigneeDropdown)}
+                onClick={() => { const next = !showAssigneeDropdown; closeAllDropdowns(); setShowAssigneeDropdown(next); }}
                 className="w-full flex items-center gap-2 px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded text-sm text-slate-700 font-medium transition-colors"
               >
                 <Users className="w-4 h-4" />
@@ -704,7 +712,7 @@ export default function TaskDetailModal({
             {/* Labels */}
             <div className="relative">
               <button
-                onClick={() => setShowLabelDropdown(!showLabelDropdown)}
+                onClick={() => { const next = !showLabelDropdown; closeAllDropdowns(); setShowLabelDropdown(next); }}
                 className="w-full flex items-center gap-2 px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded text-sm text-slate-700 font-medium transition-colors"
               >
                 <Tag className="w-4 h-4" />
@@ -770,7 +778,7 @@ export default function TaskDetailModal({
                 </div>
               ) : (
                 <button
-                  onClick={() => setAddingChecklist(true)}
+                  onClick={() => { closeAllDropdowns(); setAddingChecklist(true); }}
                   className="w-full flex items-center gap-2 px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded text-sm text-slate-700 font-medium transition-colors"
                 >
                   <CheckSquare className="w-4 h-4" />
@@ -782,7 +790,7 @@ export default function TaskDetailModal({
             {/* Start Date */}
             <div className="relative">
               <button
-                onClick={() => setShowStartDatePicker(!showStartDatePicker)}
+                onClick={() => { const next = !showStartDatePicker; closeAllDropdowns(); setShowStartDatePicker(next); }}
                 className="w-full flex items-center gap-2 px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded text-sm text-slate-700 font-medium transition-colors"
               >
                 <Calendar className="w-4 h-4" />
@@ -811,7 +819,7 @@ export default function TaskDetailModal({
             {/* Due Date */}
             <div className="relative">
               <button
-                onClick={() => setShowDatePicker(!showDatePicker)}
+                onClick={() => { const next = !showDatePicker; closeAllDropdowns(); setShowDatePicker(next); }}
                 className="w-full flex items-center gap-2 px-3 py-2 bg-slate-200 hover:bg-slate-300 rounded text-sm text-slate-700 font-medium transition-colors"
               >
                 <Calendar className="w-4 h-4" />

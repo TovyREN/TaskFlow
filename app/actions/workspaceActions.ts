@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma';
 import { MemberRole } from '@/types';
 import { emitToWorkspace } from '@/lib/socket';
+import { createNotification } from './notificationActions';
 
 // Type for workspace member with user
 type WorkspaceMemberWithUser = {
@@ -345,6 +346,17 @@ export async function createInvitation(
         invitee: { select: { id: true, name: true, email: true } }
       }
     });
+
+    // Create notification for the invitee if they exist
+    if (invitee) {
+      await createNotification({
+        type: 'WORKSPACE_INVITATION',
+        message: `Vous avez été invité à rejoindre "${invitation.workspace.name}" en tant que ${role.toLowerCase()}`,
+        userId: invitee.id,
+        actorId: inviterId,
+        workspaceInvitationId: invitation.id,
+      });
+    }
 
     return { success: true, invitation };
   } catch (error) {

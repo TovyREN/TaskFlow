@@ -1,27 +1,23 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Plus, X, Users, Grid, Crown, Shield, Eye, MoreVertical, Trash2, Settings, Mail, UserPlus, ChevronRight } from 'lucide-react';
+import { Plus, X, Users, Grid, Crown, Shield, Eye, MoreVertical, Trash2, Settings, UserPlus, ChevronRight } from 'lucide-react';
 import { MemberRole } from '../types';
 
 interface WorkspaceListProps {
   workspaces: any[];
   onSelectWorkspace: (id: string) => void;
   onCreateWorkspace: (name: string, description?: string, color?: string) => Promise<void>;
-  pendingInvitations: any[];
-  onRespondToInvitation: (invitationId: string, accept: boolean) => Promise<void>;
 }
 
 const WORKSPACE_COLORS = [
   '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6', '#06b6d4', '#6366f1'
 ];
 
-export default function WorkspaceList({ 
-  workspaces, 
-  onSelectWorkspace, 
+export default function WorkspaceList({
+  workspaces,
+  onSelectWorkspace,
   onCreateWorkspace,
-  pendingInvitations,
-  onRespondToInvitation
 }: WorkspaceListProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState('');
@@ -52,53 +48,6 @@ export default function WorkspaceList({
 
   return (
     <div className="p-8 max-w-6xl mx-auto animate-fade-in">
-      {/* Pending Invitations */}
-      {pendingInvitations.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
-            <Mail className="w-5 h-5" />
-            Pending Invitations
-          </h2>
-          <div className="space-y-3">
-            {pendingInvitations.map((invitation) => (
-              <div 
-                key={invitation.id}
-                className="bg-white border border-slate-200 rounded-lg p-4 flex items-center justify-between shadow-sm"
-              >
-                <div className="flex items-center gap-4">
-                  <div 
-                    className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold"
-                    style={{ backgroundColor: invitation.workspace.color || '#3b82f6' }}
-                  >
-                    {invitation.workspace.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-800">{invitation.workspace.name}</p>
-                    <p className="text-sm text-slate-500">
-                      Invited by {invitation.inviter.name || invitation.inviter.email} as {invitation.role.toLowerCase()}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => onRespondToInvitation(invitation.id, false)}
-                    className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                  >
-                    Decline
-                  </button>
-                  <button
-                    onClick={() => onRespondToInvitation(invitation.id, true)}
-                    className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Accept
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div className="flex items-center gap-3">

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Workspace, ViewState } from '../types';
 import { storageService } from '../services/storageService';
-import { getWorkspaces, createWorkspace, getPendingInvitations, respondToInvitation } from './actions/workspaceActions';
+import { getWorkspaces, createWorkspace, respondToInvitation } from './actions/workspaceActions';
 import Login from '../components/Login';
 import Register from '../components/Register';
 import WorkspaceList from '../components/WorkspaceList';
@@ -12,12 +12,13 @@ import WorkspaceAdminPanel from '../components/WorkspaceAdminPanel';
 import BoardView from '../components/BoardView';
 import Header from '../components/Header';
 import LandingPage from '../components/LandingPage';
+import NotificationsView from '../components/NotificationsView';
 import { SocketProvider } from '../components/SocketProvider';
+import { checkDueDateNotifications } from './actions/notificationActions';
 
 export default function TrelloPage() {
   const [user, setUser] = useState<User | null>(null);
   const [workspaces, setWorkspaces] = useState<any[]>([]);
-  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
   
   // Start on LANDING by default
   const [viewState, setViewState] = useState<ViewState>({ type: 'LANDING' });
@@ -41,12 +42,9 @@ export default function TrelloPage() {
 
         if (currentUser) {
           setUser(currentUser);
-          const [dbWorkspaces, invitations] = await Promise.all([
-            getWorkspaces(currentUser.id),
-            getPendingInvitations(currentUser.id)
-          ]);
+          const dbWorkspaces = await getWorkspaces(currentUser.id);
           setWorkspaces(dbWorkspaces);
-          setPendingInvitations(invitations);
+          checkDueDateNotifications(currentUser.id);
 
           // Restore previous viewState if exists
           const savedViewState = sessionStorage.getItem('taskflow_viewState');
@@ -89,25 +87,18 @@ export default function TrelloPage() {
 
   const refreshWorkspaces = async () => {
     if (!user) return;
-    const [dbWorkspaces, invitations] = await Promise.all([
-      getWorkspaces(user.id),
-      getPendingInvitations(user.id)
-    ]);
+    const dbWorkspaces = await getWorkspaces(user.id);
     setWorkspaces(dbWorkspaces);
-    setPendingInvitations(invitations);
   };
 
   const handleLogin = async (loggedUser: User) => {
     setUser(loggedUser);
     localStorage.setItem('taskflow_user', JSON.stringify(loggedUser));
 
-    const [dbWorkspaces, invitations] = await Promise.all([
-      getWorkspaces(loggedUser.id),
-      getPendingInvitations(loggedUser.id)
-    ]);
+    const dbWorkspaces = await getWorkspaces(loggedUser.id);
     setWorkspaces(dbWorkspaces);
-    setPendingInvitations(invitations);
-    
+    checkDueDateNotifications(loggedUser.id);
+
     setViewState({ type: 'DASHBOARD' });
   };
 
@@ -116,7 +107,6 @@ export default function TrelloPage() {
     sessionStorage.removeItem('taskflow_viewState'); // Clear saved view state
     setUser(null);
     setWorkspaces([]);
-    setPendingInvitations([]);
     setViewState({ type: 'LANDING' });
   };
 
@@ -196,15 +186,14 @@ export default function TrelloPage() {
           user={user}
           onLogout={handleLogout}
           onLogoClick={() => setViewState({ type: 'DASHBOARD' })}
+          onNotificationsClick={() => setViewState({ type: 'NOTIFICATIONS' })}
         />
         <main className="flex-1 overflow-y-auto relative">
           {viewState.type === 'DASHBOARD' ? (
-            <WorkspaceList 
+            <WorkspaceList
               workspaces={workspaces}
               onSelectWorkspace={handleSelectWorkspace}
               onCreateWorkspace={handleCreateWorkspace}
-              pendingInvitations={pendingInvitations}
-              onRespondToInvitation={handleRespondToInvitation}
             />
           ) : viewState.type === 'WORKSPACE' ? (
             <WorkspaceView 
@@ -213,6 +202,17 @@ export default function TrelloPage() {
               onBack={() => setViewState({ type: 'DASHBOARD' })}
               onSelectBoard={handleSelectBoard}
               onOpenAdmin={() => handleOpenAdmin(viewState.workspaceId)}
+            />
+          ) : viewState.type === 'NOTIFICATIONS' ? (
+            <NotificationsView
+              userId={user.id}
+              onBack={() => setViewState({ type: 'DASHBOARD' })}
+              onNavigateToBoard={(boardId, workspaceId) => {
+                setViewState({ type: 'BOARD', boardId, workspaceId });
+              }}
+              onRespondToInvitation={async (invitationId, accept) => {
+                await handleRespondToInvitation(invitationId, accept);
+              }}
             />
           ) : viewState.type === 'BOARD' ? (
             <BoardView

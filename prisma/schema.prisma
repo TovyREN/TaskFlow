@@ -21,6 +21,12 @@ enum InvitationStatus {
   DECLINED
 }
 
+enum NotificationType {
+  TASK_ASSIGNED
+  DUE_DATE_APPROACHING
+  WORKSPACE_INVITATION
+}
+
 model User {
   id                   String               @id @default(cuid())
   email                String               @unique
@@ -34,6 +40,8 @@ model User {
   receivedInvitations  WorkspaceInvitation[] @relation("InvitationReceiver")
   taskAssignments      TaskAssignee[]
   comments             Comment[]
+  notifications        Notification[]
+  actedNotifications   Notification[]       @relation("NotificationActor")
   createdAt            DateTime             @default(now())
 }
 
@@ -74,8 +82,9 @@ model WorkspaceInvitation {
   inviteeEmail String          // email of the invitee
   role        MemberRole       @default(MEMBER)
   status      InvitationStatus @default(PENDING)
-  expiresAt   DateTime?
-  createdAt   DateTime         @default(now())
+  expiresAt      DateTime?
+  createdAt      DateTime         @default(now())
+  notifications  Notification[]
 
   @@unique([workspaceId, inviteeEmail])
 }
@@ -121,11 +130,12 @@ model Task {
   dueDate     DateTime?
   listId      String
   list        TaskList       @relation(fields: [listId], references: [id], onDelete: Cascade)
-  assignees   TaskAssignee[]
-  labels      TaskLabel[]
-  checklists  Checklist[]
-  comments    Comment[]
-  createdAt   DateTime       @default(now())
+  assignees      TaskAssignee[]
+  labels         TaskLabel[]
+  checklists     Checklist[]
+  comments       Comment[]
+  notifications  Notification[]
+  createdAt      DateTime       @default(now())
 }
 
 model TaskAssignee {
@@ -174,4 +184,23 @@ model Comment {
   taskId    String
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+model Notification {
+  id                    String              @id @default(cuid())
+  type                  NotificationType
+  message               String
+  isRead                Boolean             @default(false)
+  userId                String
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId                String?
+  task                  Task?               @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  actorId               String?
+  actor                 User?               @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  workspaceInvitationId String?
+  workspaceInvitation   WorkspaceInvitation? @relation(fields: [workspaceInvitationId], references: [id], onDelete: SetNull)
+  createdAt DateTime         @default(now())
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }

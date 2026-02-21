@@ -2,14 +2,16 @@
 
 import React from 'react';
 import { User } from '../types';
+import NotificationBell from './NotificationBell';
 
 interface HeaderProps {
   user: User;
   onLogout: () => void;
   onLogoClick?: () => void;
+  onNotificationsClick?: () => void;
 }
 
-export default function Header({ user, onLogout, onLogoClick }: HeaderProps) {
+export default function Header({ user, onLogout, onLogoClick, onNotificationsClick }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 z-10">
       <div
@@ -23,6 +25,9 @@ export default function Header({ user, onLogout, onLogoClick }: HeaderProps) {
       </div>
       
       <div className="flex items-center gap-4">
+        {onNotificationsClick && (
+          <NotificationBell userId={user.id} onClick={onNotificationsClick} />
+        )}
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm font-medium">
             {user.name.charAt(0)}

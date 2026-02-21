@@ -39,6 +39,12 @@ app.prepare().then(() => {
       console.log(`User ${userId} authenticated with socket ${socket.id}`);
     });
 
+    // Subscribe to user-specific room for notifications
+    socket.on('join-user', (userId) => {
+      socket.join(`user:${userId}`);
+      console.log(`Socket ${socket.id} joined user:${userId}`);
+    });
+
     // Subscribe to workspace updates
     socket.on('join-workspace', (workspaceId) => {
       socket.join(`workspace:${workspaceId}`);

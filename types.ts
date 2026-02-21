@@ -112,7 +112,47 @@ export type ViewState =
   | { type: 'REGISTER' }
   | { type: 'DASHBOARD' }
   | { type: 'WORKSPACE'; workspaceId: string }
-  | { type: 'BOARD'; boardId: string; workspaceId: string };
+  | { type: 'BOARD'; boardId: string; workspaceId: string }
+  | { type: 'NOTIFICATIONS' };
+
+export type NotificationType = 'TASK_ASSIGNED' | 'DUE_DATE_APPROACHING' | 'WORKSPACE_INVITATION';
+
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  message: string;
+  isRead: boolean;
+  userId: string;
+  taskId?: string | null;
+  task?: {
+    id: string;
+    title: string;
+    list?: {
+      board?: {
+        id: string;
+        workspaceId: string;
+      };
+    };
+  } | null;
+  actorId?: string | null;
+  actor?: {
+    id: string;
+    name: string | null;
+    email: string;
+  } | null;
+  workspaceInvitationId?: string | null;
+  workspaceInvitation?: {
+    id: string;
+    status: string;
+    role: string;
+    workspace: {
+      id: string;
+      name: string;
+      color?: string | null;
+    };
+  } | null;
+  createdAt: string | Date;
+}
 
 export interface DragItem {
   id: string;

@@ -39,7 +39,9 @@ type EventType =
   | 'task:checklist-deleted'
   | 'task:checklist-item-added'
   | 'task:checklist-item-updated'
-  | 'task:checklist-item-deleted';
+  | 'task:checklist-item-deleted'
+  // Notification events
+  | 'notification:new';
 
 interface EmitOptions {
   // Room to emit to (workspace:id or board:id)
@@ -95,5 +97,13 @@ export function emitToBoard(boardId: string, event: EventType, data: any, exclud
     event,
     data,
     excludeUserId
+  });
+}
+
+export function emitToUser(userId: string, event: EventType, data: any) {
+  emitSocketEvent({
+    room: `user:${userId}`,
+    event,
+    data
   });
 }

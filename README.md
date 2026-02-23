@@ -21,7 +21,7 @@ User can create boards, manager cards, assign member, comment, set due date and 
 ## Run with Docker
 
 **Prerequisites:** Docker
-
+a
 1. Launch App & Database:
    `sudo docker compose up --build -d`
 2. Initialize the Database:

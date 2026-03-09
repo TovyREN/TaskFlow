@@ -1,0 +1,28 @@
+name: Check Vercel Deployment
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  check-deployment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel Deployment
+        uses: unly/github-action-await-vercel-deployment@v3
+        id: await-vercel
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          timeout: 300 # Wait up to 5 minutes
+
+      - name: Check Status
+        run: |
+          echo "Deployment Status: ${{ steps.await-vercel.outputs.deploymentStatus }}"
+          if [ "${{ steps.await-vercel.outputs.deploymentStatus }}" == "READY" ]; then
+            echo "✅ TaskFlow is live at ${{ steps.await-vercel.outputs.deploymentUrl }}"
+          else
+            echo "❌ Deployment failed or timed out"
+            exit 1
+          fi

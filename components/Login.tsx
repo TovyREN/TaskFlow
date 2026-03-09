@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import Script from 'next/script'; // Uses Next.js built-in script loader
 import { User } from '../types';
 import { loginUser } from '../app/actions/authActions';
 import { ArrowLeft } from 'lucide-react';
@@ -12,31 +13,19 @@ interface LoginProps {
 }
 
 export default function Login({ onLogin, onBack }: LoginProps) {
-  useEffect(() => {
-    // Load Google Sign-In script
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
-
-    return () => {
-      document.head.removeChild(script);
-    };
-  }, []);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [isGoogleLoaded, setIsGoogleLoaded] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsPending(true);
 
-    // Call login with both email AND password
     const result = await loginUser(formData.email, formData.password);
 
     if (result.success && result.user) {
@@ -50,6 +39,13 @@ export default function Login({ onLogin, onBack }: LoginProps) {
 
   return (
     <div className="flex h-screen items-center justify-center bg-gray-100">
+      {/* This tells Vercel to download the Google script as soon as possible */}
+      <Script 
+        src="https://accounts.google.com/gsi/client" 
+        strategy="afterInteractive"
+        onLoad={() => setIsGoogleLoaded(true)} // This turns on the button when Google is ready
+      />
+
       <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96 animate-fade-in">
           {onBack && (
             <button
@@ -107,12 +103,21 @@ export default function Login({ onLogin, onBack }: LoginProps) {
             </button>
           </div>
 
-          <GoogleLoginButton 
-            onLogin={onLogin} 
-            onError={(error) => setError(error)}
-            disabled={isPending}
-          />
+          <div className="mt-4">
+            {/* If Google is ready, show the button. Otherwise, show a loading message */}
+            {isGoogleLoaded ? (
+              <GoogleLoginButton 
+                onLogin={onLogin} 
+                onError={(err) => setError(err)}
+                disabled={isPending}
+              />
+            ) : (
+              <div className="text-center text-sm text-gray-400 py-2 border rounded border-dashed">
+                Connecting to Google...
+              </div>
+            )}
+          </div>
         </form>
       </div>
     );
-  }
+}

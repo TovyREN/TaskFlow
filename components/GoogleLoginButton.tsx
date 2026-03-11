@@ -28,6 +28,7 @@ export default function GoogleLoginButton({
   const handleSuccess = useCallback(
     async (credentialResponse: any) => {
       try {
+        // credentialResponse.credential is the JWT from Google
         const result = await loginWithGoogle(credentialResponse.credential);
 
         if (result.success && result.user) {
@@ -44,16 +45,16 @@ export default function GoogleLoginButton({
   );
 
   const initializeGoogle = useCallback(() => {
-    // Only proceed if script is loaded, container exists, and Client ID is available
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-    
+
     if (!clientId) {
-      console.error("Google Client ID is missing from environment variables.");
+      console.error("GSI_ERROR: NEXT_PUBLIC_GOOGLE_CLIENT_ID is missing.");
       return;
     }
 
     if (window.google?.accounts?.id && containerRef.current) {
       try {
+        // CRITICAL FIX: Use .initialize(), NOT .setup()
         window.google.accounts.id.initialize({
           client_id: clientId,
           callback: handleSuccess,
@@ -61,12 +62,11 @@ export default function GoogleLoginButton({
           itp_support: true,
         });
 
+        // Render the physical button into our ref
         window.google.accounts.id.renderButton(containerRef.current, {
           theme: "outline",
           size: "large",
-          // Use a fixed number or valid string for width
-          // "100%" often causes the button to fail to render in certain containers
-          width: 300, 
+          width: 280, // Fixed number avoids iframe rendering bugs
           text: "signin_with",
           shape: "rectangular",
           logo_alignment: "left",
@@ -77,8 +77,8 @@ export default function GoogleLoginButton({
     }
   }, [handleSuccess]);
 
+  // Initialize whenever the script loads OR if the window object is already there
   useEffect(() => {
-    // Re-initialize if the script is loaded OR if the window.google object becomes available
     if (scriptLoaded || (typeof window !== "undefined" && window.google)) {
       initializeGoogle();
     }
@@ -86,6 +86,7 @@ export default function GoogleLoginButton({
 
   return (
     <div className="mt-4 w-full">
+      {/* Load the Google Identity Services SDK */}
       <Script
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
@@ -98,26 +99,22 @@ export default function GoogleLoginButton({
           <div className="w-full border-t border-gray-300"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-white text-gray-500">or</span>
+          <span className="px-2 bg-white text-gray-500 font-medium">or</span>
         </div>
       </div>
 
       <div 
-        className={`flex justify-center min-h-[44px] ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+        className={`flex justify-center min-h-[44px] transition-opacity ${
+          disabled ? "opacity-50 pointer-events-none" : "opacity-100"
+        }`}
       >
+        {/* Google's library will inject the iframe here */}
         <div 
           ref={containerRef} 
-          id="google-button-container" 
           className="w-full flex justify-center"
+          style={{ minHeight: '44px' }}
         />
       </div>
-      
-      {/* Hidden fallback/loading text if the button fails to render within 5 seconds */}
-      <noscript>
-        <p className="text-center text-xs text-red-500">
-          Javascript is required for Google Sign-In.
-        </p>
-      </noscript>
     </div>
   );
 }

@@ -3,13 +3,16 @@ const nextJest = require('next/jest');
 const createJestConfig = nextJest({ dir: './' });
 
 const config = {
-  // Fixed the typo here: removed the '>'
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'], 
   testEnvironment: 'jest-environment-jsdom',
+  // Add this section to resolve the @/ alias
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
   collectCoverage: true,
   collectCoverageFrom: [
     'components/**/*.{ts,tsx}', 
-    '!app/actions/**',           // Exclude the database logic
+    '!app/actions/**',           
     '!app/layout.tsx',           
     '!app/page.tsx',             
     '!**/*.d.ts',

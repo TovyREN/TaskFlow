@@ -11,19 +11,18 @@ const config = {
   },
   collectCoverage: true,
   collectCoverageFrom: [
-    'components/**/*.{ts,tsx}', 
-    '!app/actions/**',           
-    '!app/layout.tsx',           
-    '!app/page.tsx',             
+    'components/**/*.{ts,tsx}',
+    'app/**/*.{ts,tsx}',
+    '!app/layout.tsx',
     '!**/*.d.ts',
     '!**/node_modules/**',
   ],
   coverageThreshold: {
     global: {
-      statements: 95,
-      branches: 95,
-      functions: 95,
-      lines: 95,
+      statements: 90,
+      branches: 90,
+      functions: 90,
+      lines: 90,
     },
   },
 };

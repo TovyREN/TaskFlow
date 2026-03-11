@@ -83,4 +83,14 @@ describe('BoardTabs Component', () => {
     fireEvent.click(screen.getByLabelText('Scroll right'));
     expect(Element.prototype.scrollBy).toHaveBeenCalled();
   });
+
+  it('uses default color when active board has no color', () => {
+    const boardsNoColor = [
+      { id: 'b1', title: 'Board One' },
+      { id: 'b2', title: 'Board Two', color: '#00ff00' },
+    ];
+    render(<BoardTabs boards={boardsNoColor} currentBoardId="b1" onBoardSelect={mockOnBoardSelect} />);
+    const activeTab = screen.getByText('Board One');
+    expect(activeTab).toHaveStyle('border-bottom-color: #3b82f6');
+  });
 });

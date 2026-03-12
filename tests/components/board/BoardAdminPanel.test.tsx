@@ -23,7 +23,7 @@ const mockBoard = {
   id: 'b1',
   title: 'Board',
   backgroundImage: null,
-  labels: [{ id: 'l1', name: 'Bug', color: '#ef4444' }],
+  labels: [{ id: 'l1', name: 'Bug', color: '#ef4444' }, { id: 'l2', name: 'Feature', color: '#22c55e' }],
   workspace: { members: [] },
 };
 
@@ -87,7 +87,7 @@ describe('BoardAdminPanel', () => {
   it('creates a new label', async () => {
     createBoardLabel.mockResolvedValue({
       success: true,
-      label: { id: 'l2', name: 'Feature', color: '#3b82f6' },
+      label: { id: 'l3', name: 'Feature', color: '#3b82f6' },
     });
 
     render(<BoardAdminPanel {...defaultProps} />);
@@ -593,6 +593,50 @@ describe('BoardAdminPanel', () => {
 
     await waitFor(() => {
       expect(createBoardLabel).toHaveBeenCalledWith('b1', 'EnterLabel', '#3b82f6', 'user1');
+    });
+  });
+
+  it('switches back to background tab from labels tab', async () => {
+    render(<BoardAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Board Settings')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Labels'));
+    expect(screen.getByText('Bug')).toBeInTheDocument();
+
+    // Click on the Background tab button (there are two 'Background' texts - tab + header)
+    const tabs = screen.getAllByRole('button');
+    const bgTab = tabs.find(btn => btn.textContent?.includes('Background') && btn.className.includes('flex-1'));
+    fireEvent.click(bgTab!);
+    // Should now show custom color section
+    expect(screen.getByText('Custom Color')).toBeInTheDocument();
+  });
+
+  it('changes edit label color via color picker', async () => {
+    updateBoardLabel.mockResolvedValue({ success: true });
+
+    render(<BoardAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Board Settings')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Labels'));
+
+    // Click edit on the Bug label
+    const bugSpan = screen.getByText('Bug');
+    const labelRow = bugSpan.closest('[class*="flex items-center gap-3"]') || bugSpan.parentElement!.parentElement!;
+    const buttons = labelRow.querySelectorAll('button');
+    fireEvent.click(buttons[0]);
+
+    // Change color via the color picker input
+    const colorInput = screen.getByDisplayValue('#ef4444');
+    fireEvent.change(colorInput, { target: { value: '#0000ff' } });
+
+    // Submit the edit
+    const checkBtn = screen.getAllByRole('button').find(
+      (btn) => btn.querySelector('svg') && btn.className.includes('text-green-600')
+    );
+    fireEvent.click(checkBtn!);
+
+    await waitFor(() => {
+      expect(updateBoardLabel).toHaveBeenCalledWith('l1', { name: 'Bug', color: '#0000ff' }, 'user1');
     });
   });
 });

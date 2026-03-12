@@ -147,6 +147,35 @@ describe('Dashboard Component', () => {
     expect(mockOnUpdateBoards).not.toHaveBeenCalled();
   });
 
+  it('closes modal when clicking overlay backdrop', () => {
+    render(
+      <Dashboard boards={boards} onSelectBoard={mockOnSelectBoard} onUpdateBoards={mockOnUpdateBoards} userId={userId} />
+    );
+    fireEvent.click(screen.getByText('Create New Board'));
+    expect(screen.getByText('Board Title')).toBeInTheDocument();
+    // Click the overlay (the fixed backdrop div)
+    fireEvent.click(screen.getByText('Board Title').closest('.fixed')!);
+    expect(screen.queryByText('Board Title')).not.toBeInTheDocument();
+  });
+
+  it('closes modal when clicking X button', () => {
+    render(
+      <Dashboard boards={boards} onSelectBoard={mockOnSelectBoard} onUpdateBoards={mockOnUpdateBoards} userId={userId} />
+    );
+    fireEvent.click(screen.getByText('Create New Board'));
+    expect(screen.getByText('Board Title')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('icon-x'));
+    expect(screen.queryByText('Board Title')).not.toBeInTheDocument();
+  });
+
+  it('opens create modal from empty state button', () => {
+    render(
+      <Dashboard boards={[]} onSelectBoard={mockOnSelectBoard} onUpdateBoards={mockOnUpdateBoards} userId={userId} />
+    );
+    fireEvent.click(screen.getByText('Create your first board'));
+    expect(screen.getByText('Board Title')).toBeInTheDocument();
+  });
+
   it('renders board card without color using default', () => {
     const boardsNoColor = [
       { id: 'b-1', title: 'No Color Board', color: '' },

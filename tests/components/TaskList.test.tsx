@@ -170,4 +170,30 @@ describe('TaskList Component', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(mockProps.onUpdateList).toHaveBeenCalledWith(expect.objectContaining({ title: 'Enter Key Test' }));
   });
+
+  it('closes create card form on blur when title is empty', () => {
+    render(<TaskList {...mockProps} />);
+    fireEvent.click(screen.getByText('Add a card'));
+    const textarea = screen.getByPlaceholderText('Enter a title for this card...');
+    fireEvent.blur(textarea);
+    expect(screen.queryByPlaceholderText('Enter a title for this card...')).not.toBeInTheDocument();
+  });
+
+  it('keeps create card form open on blur when title is not empty', () => {
+    render(<TaskList {...mockProps} />);
+    fireEvent.click(screen.getByText('Add a card'));
+    const textarea = screen.getByPlaceholderText('Enter a title for this card...');
+    fireEvent.change(textarea, { target: { value: 'Some title' } });
+    fireEvent.blur(textarea);
+    expect(screen.getByPlaceholderText('Enter a title for this card...')).toBeInTheDocument();
+  });
+
+  it('opens rename mode via menu Rename List button', () => {
+    const { container } = render(<TaskList {...mockProps} />);
+    const ellipsisIcon = container.querySelector('.lucide-ellipsis');
+    fireEvent.click(ellipsisIcon!.parentElement!);
+    fireEvent.click(screen.getByText(/Rename List/i));
+    // Should now be in editing mode with an input
+    expect(screen.getByDisplayValue('To Do')).toBeInTheDocument();
+  });
 });

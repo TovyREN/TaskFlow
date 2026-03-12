@@ -577,4 +577,104 @@ describe('TaskDetailModal Component', () => {
       expect(container.querySelector('.animate-spin')).not.toBeInTheDocument();
     });
   });
+
+  it('starts polling when socket is disconnected', async () => {
+    jest.useFakeTimers();
+    const { useSocket: mockUseSocket } = require('../../../components/SocketProvider');
+    mockUseSocket.mockReturnValue({
+      on: jest.fn(),
+      off: jest.fn(),
+      isConnected: false, // Socket disconnected - triggers polling
+    });
+
+    const mockGetTaskDetails = cardActions.getTaskDetails as jest.Mock;
+    mockGetTaskDetails.mockResolvedValue(mockTask);
+
+    render(
+      <SocketProvider userId="u1">
+        <TaskDetailModal
+          taskId="t1"
+          userId="u1"
+          onClose={mockOnClose}
+          onTaskUpdated={mockOnTaskUpdated}
+          onTaskDeleted={mockOnTaskDeleted}
+        />
+      </SocketProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Task')).toBeInTheDocument();
+    });
+
+    // Clear initial calls
+    mockGetTaskDetails.mockClear();
+
+    // Advance timer to trigger polling interval
+    const updatedTask = { ...mockTask, title: 'Updated Task' };
+    mockGetTaskDetails.mockResolvedValue(updatedTask);
+
+    await act(async () => {
+      jest.advanceTimersByTime(10000);
+    });
+
+    expect(mockGetTaskDetails).toHaveBeenCalledWith('t1');
+
+    jest.useRealTimers();
+
+    // Restore the socket mock
+    mockUseSocket.mockReturnValue({
+      on: jest.fn((event: string, cb: Function) => { socketCallbacks[event] = cb; }),
+      off: jest.fn((event: string) => { delete socketCallbacks[event]; }),
+      isConnected: true,
+    });
+  });
+
+  it('polling handles null task data gracefully', async () => {
+    jest.useFakeTimers();
+    const { useSocket: mockUseSocket } = require('../../../components/SocketProvider');
+    mockUseSocket.mockReturnValue({
+      on: jest.fn(),
+      off: jest.fn(),
+      isConnected: false,
+    });
+
+    const mockGetTaskDetails = cardActions.getTaskDetails as jest.Mock;
+    mockGetTaskDetails.mockResolvedValue(mockTask);
+
+    render(
+      <SocketProvider userId="u1">
+        <TaskDetailModal
+          taskId="t1"
+          userId="u1"
+          onClose={mockOnClose}
+          onTaskUpdated={mockOnTaskUpdated}
+          onTaskDeleted={mockOnTaskDeleted}
+        />
+      </SocketProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Task')).toBeInTheDocument();
+    });
+
+    mockGetTaskDetails.mockClear();
+    // Return null on poll - task should remain unchanged
+    mockGetTaskDetails.mockResolvedValue(null);
+
+    await act(async () => {
+      jest.advanceTimersByTime(10000);
+    });
+
+    expect(mockGetTaskDetails).toHaveBeenCalledWith('t1');
+    // Original task should still be displayed
+    expect(screen.getByText('Test Task')).toBeInTheDocument();
+
+    jest.useRealTimers();
+
+    mockUseSocket.mockReturnValue({
+      on: jest.fn((event: string, cb: Function) => { socketCallbacks[event] = cb; }),
+      off: jest.fn((event: string) => { delete socketCallbacks[event]; }),
+      isConnected: true,
+    });
+  });
 });

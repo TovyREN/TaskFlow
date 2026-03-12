@@ -59,4 +59,15 @@ describe('Sidebar', () => {
     );
     expect(screen.getByText('Your Boards')).toBeInTheDocument();
   });
+
+  it('uses default color when board has no color', () => {
+    const boardsNoColor = [
+      { id: 'b1', title: 'No Color', color: '', columns: [], members: [], admins: [] },
+    ];
+    const { container } = render(
+      <Sidebar boards={boardsNoColor} onSelectBoard={jest.fn()} onGoDashboard={jest.fn()} />
+    );
+    const dot = container.querySelector('.rounded-full');
+    expect(dot).toHaveStyle({ backgroundColor: '#3b82f6' });
+  });
 });

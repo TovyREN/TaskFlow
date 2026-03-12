@@ -34,49 +34,44 @@ async function getUserRoleInBoard(boardId: string, userId: string): Promise<Memb
 
 // Fetch a single board with its lists and tasks
 export async function getBoardDetails(boardId: string) {
-  try {
-    const board = await prisma.board.findUnique({
-      where: { id: boardId },
-      include: {
-        labels: true,
-        workspace: {
-          include: {
-            members: {
-              include: {
-                user: { select: { id: true, name: true, email: true } }
-              }
+  const board = await prisma.board.findUnique({
+    where: { id: boardId },
+    include: {
+      labels: true,
+      workspace: {
+        include: {
+          members: {
+            include: {
+              user: { select: { id: true, name: true, email: true } }
             }
           }
-        },
-        lists: {
-          orderBy: { order: 'asc' },
-          include: {
-            tasks: {
-              orderBy: { order: 'asc' },
-              include: {
-                assignees: {
-                  include: {
-                    user: { select: { id: true, name: true, email: true } }
-                  }
-                },
-                labels: {
-                  include: { label: true }
-                },
-                checklists: {
-                  include: { items: true }
-                },
-                _count: { select: { comments: true } }
-              }
-            },
+        }
+      },
+      lists: {
+        orderBy: { order: 'asc' },
+        include: {
+          tasks: {
+            orderBy: { order: 'asc' },
+            include: {
+              assignees: {
+                include: {
+                  user: { select: { id: true, name: true, email: true } }
+                }
+              },
+              labels: {
+                include: { label: true }
+              },
+              checklists: {
+                include: { items: true }
+              },
+              _count: { select: { comments: true } }
+            }
           },
         },
       },
-    });
-    return board;
-  } catch (error) {
-    console.error("Failed to fetch board details:", error);
-    return null;
-  }
+    },
+  });
+  return board;
 }
 
 export async function createList(boardId: string, title: string, userId: string) {

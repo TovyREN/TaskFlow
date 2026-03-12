@@ -114,6 +114,14 @@ describe('GanttView Component', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
+  it('calls onTaskClick when clicking the timeline bar', () => {
+    render(<GanttView boardId="b1" userId="u1" board={mockBoard} onClose={mockOnClose} onTaskClick={mockOnTaskClick} />);
+    // The bar has a title with the date range
+    const bars = screen.getAllByTitle(/2026/);
+    fireEvent.click(bars[0]);
+    expect(mockOnTaskClick).toHaveBeenCalledWith('t1');
+  });
+
   it('manages socket cleanup', () => {
     const { unmount } = render(<GanttView boardId="b1" userId="u1" board={mockBoard} onClose={mockOnClose} onTaskClick={mockOnTaskClick} />);
     unmount();

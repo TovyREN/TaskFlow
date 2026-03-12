@@ -166,6 +166,43 @@ describe('TaskCard Component', () => {
     expect(screen.getByText('T')).toBeInTheDocument();
   });
 
+  it('handles task with undefined labels, assignees, checklists', () => {
+    const minimalTask = {
+      id: 't1',
+      title: 'Minimal Task',
+      description: '',
+      _count: { comments: 0 },
+      listId: 'l1',
+      order: 0,
+      // no labels, assignees, checklists properties
+    };
+    render(<TaskCard task={minimalTask} index={0} allUsers={mockUsers} onClick={mockOnClick} />);
+    expect(screen.getByText('Minimal Task')).toBeInTheDocument();
+  });
+
+  it('renders labels using id/color fallback when labelId/label missing', () => {
+    const taskWithDirectLabels = {
+      ...baseTask,
+      labels: [
+        { id: 'direct-1', color: '#ff00ff' },
+      ]
+    };
+    const { container } = render(<TaskCard task={taskWithDirectLabels} index={0} allUsers={mockUsers} onClick={mockOnClick} />);
+    const labelSpan = container.querySelector('.rounded-full');
+    expect(labelSpan).toHaveStyle({ backgroundColor: '#ff00ff' });
+  });
+
+  it('shows ? for assignee with no name or email', () => {
+    const taskWithEmptyAssignee = {
+      ...baseTask,
+      assignees: [
+        { userId: 'u-unknown', user: {} },
+      ]
+    };
+    render(<TaskCard task={taskWithEmptyAssignee} index={0} allUsers={mockUsers} onClick={mockOnClick} />);
+    expect(screen.getByText('?')).toBeInTheDocument();
+  });
+
   it('applies dragging styles when snapshot.isDragging is true', () => {
     // We override the local mock for this specific test
     const dnd = require('@hello-pangea/dnd');

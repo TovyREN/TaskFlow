@@ -26,6 +26,11 @@ describe('NotificationBell Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getUnreadNotificationCount as jest.Mock).mockResolvedValue(0);
+    (useSocket as jest.Mock).mockReturnValue({
+      on: mockOn,
+      off: mockOff,
+      isConnected: true,
+    });
   });
 
   it('renders bell button with Notifications title', async () => {
@@ -101,5 +106,46 @@ describe('NotificationBell Component', () => {
     });
 
     expect(mockOn).toHaveBeenCalledWith('notification:new', expect.any(Function));
+  });
+
+  it('does not register socket listener when disconnected', async () => {
+    (useSocket as jest.Mock).mockReturnValue({
+      on: mockOn,
+      off: mockOff,
+      isConnected: false,
+    });
+
+    await act(async () => {
+      render(<NotificationBell userId={userId} onClick={mockOnClick} />);
+    });
+
+    expect(mockOn).not.toHaveBeenCalled();
+  });
+
+  it('increments count when notification:new socket event fires', async () => {
+    (getUnreadNotificationCount as jest.Mock).mockResolvedValue(3);
+
+    await act(async () => {
+      render(<NotificationBell userId={userId} onClick={mockOnClick} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('3')).toBeInTheDocument();
+    });
+
+    // Find the registered callback and trigger it
+    const notifCallback = mockOn.mock.calls.find(
+      (c: any[]) => c[0] === 'notification:new'
+    );
+    expect(notifCallback).toBeDefined();
+
+    await act(async () => {
+      notifCallback![1]();
+    });
+
+    // Count should increment from 3 to 4
+    await waitFor(() => {
+      expect(screen.getByText('4')).toBeInTheDocument();
+    });
   });
 });

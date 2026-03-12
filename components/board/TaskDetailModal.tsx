@@ -104,6 +104,20 @@ export default function TaskDetailModal({
     };
   }, [taskId, isConnected, on, off]);
 
+  // Polling fallback when sockets are not connected (e.g. Vercel deployment)
+  useEffect(() => {
+    if (isConnected) return;
+    const interval = setInterval(async () => {
+      const data = await getTaskDetails(taskId);
+      if (data) {
+        setTask(data);
+        setTitle(data.title);
+        setDescription(data.description || '');
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [taskId, isConnected]);
+
   const loadTask = async () => {
     setLoading(true);
     const data = await getTaskDetails(taskId);

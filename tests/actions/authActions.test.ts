@@ -20,8 +20,13 @@ const mockVerifyPassword = verifyPassword as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(console, 'error').mockImplementation(() => {});
   mockHashPassword.mockResolvedValue('$2b$10$hashedvalue');
   mockVerifyPassword.mockResolvedValue(true);
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 // ─── loginUser ───────────────────────────────────────────────────────

@@ -99,6 +99,11 @@ function checklistItemWithBoard(itemId = 'item1', checklistId = 'cl1', taskId = 
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 // =====================

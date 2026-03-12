@@ -79,6 +79,11 @@ function memberWorkspace(ownerId = 'owner1', memberId = 'user2', memberRole = 'M
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 // =====================

@@ -37,7 +37,6 @@ L'application est structuree en trois niveaux :
 - **Carte/Tache** : un element de travail individuel dans une liste
 
 > ![Screenshot: Page d'accueil TaskFlow](screenshots/landing-page.png)
-> *Capture : Page d'accueil de TaskFlow montrant le hero et les fonctionnalites principales*
 
 ---
 
@@ -136,7 +135,7 @@ La page principale affiche tous vos workspaces sous forme de cartes. Chaque cart
    - **Nom du workspace** (obligatoire)
    - **Description** (optionnel)
    - **Couleur** : choisissez parmi 10 couleurs predefinies
-3. Cliquez sur **"Create"**.
+3. Cliquez sur **"Create Workspace"**.
 
 > ![Screenshot: Modal de creation de workspace](screenshots/create-workspace.png)
 > *Capture : Formulaire de creation d'un nouveau workspace*
@@ -706,9 +705,6 @@ TaskFlow supporte la collaboration en temps reel. Les modifications sont instant
 | **Notifications** | Livraison en temps reel |
 
 > **Note :** Sur les deployements serverless (ex: Vercel), les WebSockets ne sont pas disponibles. Les modifications locales sont toujours appliquees immediatement pour l'utilisateur qui les effectue. Les autres utilisateurs verront les changements au prochain rafraichissement de la page.
-
-> ![Screenshot: Collaboration en temps reel](screenshots/realtime-collaboration.png)
-> *Capture : Deux utilisateurs collaborant sur le meme board en temps reel*
 
 ---
 

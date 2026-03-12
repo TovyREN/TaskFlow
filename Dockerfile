@@ -2,22 +2,20 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies first for caching
 COPY package*.json ./
+COPY prisma ./prisma/
+
 RUN npm install
 
-# Copy Prisma schema and generate client
-COPY prisma ./prisma/
-RUN npx prisma generate
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ARG DATABASE_URL
 
-# Copy the rest of the application
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV DATABASE_URL=$DATABASE_URL
+
 COPY . .
-
-# Build the Next.js app
+RUN npx prisma generate
 RUN npm run build
 
 EXPOSE 3000
-
-EXPOSE 5555
-
 CMD ["npm", "start"]

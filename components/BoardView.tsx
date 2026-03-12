@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
-import { getBoardDetails, createList, createTask, reorderTasksInList, moveTaskToList, reorderLists, getWorkspaceBoards } from '../app/actions/boardActions';
-import { Plus, Loader2, X, Settings, Clock, Users, CheckSquare, MessageSquare, Calendar, Grid } from 'lucide-react';
-import { TaskList as TaskListType, Task } from '../types';
+import { DragDropContext, Droppable, DropResult } from '@hello-pangea/dnd';
+import { getBoardDetails, createList, createTask, reorderTasksInList, moveTaskToList, reorderLists, getWorkspaceBoards, updateList, deleteList, clearListTasks } from '../app/actions/boardActions';
+import { Plus, Loader2, X, Settings, Calendar, Grid } from 'lucide-react';
 import TaskDetailModal from './board/TaskDetailModal';
 import BoardAdminPanel from './board/BoardAdminPanel';
 import GanttView from './board/GanttView';
 import BoardTabs from './board/BoardTabs';
+import TaskListComponent from './board/TaskList';
 import { useSocket } from './SocketProvider';
 
 interface BoardViewProps {
@@ -79,6 +79,29 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
         // Avoid duplicates
         if (prev.lists.some((l: any) => l.id === data.list.id)) return prev;
         return { ...prev, lists: [...prev.lists, { ...data.list, tasks: data.list.tasks || [] }] };
+      });
+    };
+
+    // Handle list updated (rename, color change, clear tasks)
+    const handleListUpdated = (data: any) => {
+      if (data.boardId !== boardId) return;
+      setBoard(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          lists: prev.lists.map((l: any) =>
+            l.id === data.list.id ? { ...l, ...data.list, tasks: data.list.tasks || l.tasks } : l
+          )
+        };
+      });
+    };
+
+    // Handle list deleted
+    const handleListDeleted = (data: any) => {
+      if (data.boardId !== boardId) return;
+      setBoard(prev => {
+        if (!prev) return prev;
+        return { ...prev, lists: prev.lists.filter((l: any) => l.id !== data.listId) };
       });
     };
 
@@ -185,6 +208,8 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
 
     // Register event listeners
     on('list:created', handleListCreated);
+    on('list:updated', handleListUpdated);
+    on('list:deleted', handleListDeleted);
     on('task:created', handleTaskCreated);
     on('task:updated', handleTaskUpdated);
     on('task:deleted', handleTaskDeleted);
@@ -231,6 +256,8 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
     return () => {
       leaveBoard(boardId);
       off('list:created', handleListCreated);
+      off('list:updated', handleListUpdated);
+      off('list:deleted', handleListDeleted);
       off('task:created', handleTaskCreated);
       off('task:updated', handleTaskUpdated);
       off('task:deleted', handleTaskDeleted);
@@ -275,10 +302,11 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
     }
   };
 
-  const handleAddTask = async (listId: string) => {
-    if (!newTaskTitle.trim() || !board) return;
+  const handleAddTask = async (listId: string, title?: string) => {
+    const taskTitle = title || newTaskTitle;
+    if (!taskTitle.trim() || !board) return;
 
-    const result = await createTask(listId, newTaskTitle, userId);
+    const result = await createTask(listId, taskTitle, userId);
     if (result.success && result.task) {
       setBoard({
         ...board,
@@ -292,6 +320,47 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
       setAddingTaskToListId(null);
     } else if (result.error) {
       alert(result.error);
+    }
+  };
+
+  const handleUpdateList = async (updatedList: any) => {
+    if (!board) return;
+    // Optimistic update
+    setBoard({
+      ...board,
+      lists: board.lists.map((l: any) => l.id === updatedList.id ? { ...l, ...updatedList } : l)
+    });
+    const result = await updateList(updatedList.id, { title: updatedList.title, headerColor: updatedList.headerColor }, userId);
+    if (!result.success) {
+      alert(result.error || 'Failed to update list');
+      loadBoard();
+    }
+  };
+
+  const handleDeleteList = async (listId: string) => {
+    if (!board) return;
+    if (!confirm('Are you sure you want to delete this list and all its tasks?')) return;
+    // Optimistic update
+    setBoard({ ...board, lists: board.lists.filter((l: any) => l.id !== listId) });
+    const result = await deleteList(listId, userId);
+    if (!result.success) {
+      alert(result.error || 'Failed to delete list');
+      loadBoard();
+    }
+  };
+
+  const handleClearTasks = async (listId: string) => {
+    if (!board) return;
+    if (!confirm('Are you sure you want to remove all tasks from this list?')) return;
+    // Optimistic update
+    setBoard({
+      ...board,
+      lists: board.lists.map((l: any) => l.id === listId ? { ...l, tasks: [] } : l)
+    });
+    const result = await clearListTasks(listId, userId);
+    if (!result.success) {
+      alert(result.error || 'Failed to clear tasks');
+      loadBoard();
     }
   };
 
@@ -471,159 +540,18 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
             >
               {/* Render Real Lists */}
               {board.lists.map((list: any, listIndex: number) => (
-                <Draggable key={list.id} draggableId={list.id} index={listIndex}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      className={`w-72 bg-slate-100 rounded-xl p-3 shrink-0 flex flex-col gap-2 shadow-sm border border-slate-200 ${
-                        snapshot.isDragging ? 'rotate-2 shadow-lg' : ''
-                      }`}
-                    >
-                      <div {...provided.dragHandleProps}>
-                        <h4 className="font-semibold px-2 text-slate-700 cursor-grab">{list.title}</h4>
-                      </div>
-                      
-                      {/* Droppable Tasks Area */}
-                      <Droppable droppableId={list.id} type="TASK">
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className={`min-h-[20px] ${snapshot.isDraggingOver ? 'bg-blue-50 rounded' : ''}`}
-                          >
-                            {list.tasks.length === 0 && !snapshot.isDraggingOver && (
-                              <p className="text-xs text-slate-400 text-center py-2">No tasks yet</p>
-                            )}
-                            {list.tasks.map((task: any, taskIndex: number) => (
-                              <Draggable key={task.id} draggableId={task.id} index={taskIndex}>
-                                {(provided, snapshot) => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    onClick={() => setSelectedTaskId(task.id)}
-                                    className={`bg-white p-3 mb-2 rounded-lg shadow-sm text-sm cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all ${
-                                      snapshot.isDragging ? 'rotate-2 shadow-lg ring-2 ring-blue-400' : ''
-                                    }`}
-                                  >
-                                    {/* Labels */}
-                                    {task.labels && task.labels.length > 0 && (
-                                      <div className="flex flex-wrap gap-1 mb-2">
-                                        {task.labels.slice(0, 3).map((tl: any) => (
-                                          <span
-                                            key={tl.labelId}
-                                            className="h-2 w-10 rounded-full"
-                                            style={{ backgroundColor: tl.label?.color }}
-                                          />
-                                        ))}
-                                      </div>
-                                    )}
-                                    
-                                    <span className="text-slate-800">{task.title}</span>
-                                    
-                                    {/* Task Badges */}
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                      {task.dueDate && (
-                                        <span className={`text-xs flex items-center gap-1 px-1.5 py-0.5 rounded ${
-                                          new Date(task.dueDate) < new Date() 
-                                            ? 'bg-red-100 text-red-600' 
-                                            : 'bg-slate-100 text-slate-500'
-                                        }`}>
-                                          <Clock className="w-3 h-3" />
-                                          {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                        </span>
-                                      )}
-                                      
-                                      {task.assignees && task.assignees.length > 0 && (
-                                        <div className="flex -space-x-1">
-                                          {task.assignees.slice(0, 3).map((a: any) => (
-                                            <div
-                                              key={a.userId}
-                                              className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-[10px] font-medium border border-white"
-                                              title={a.user?.name || a.user?.email}
-                                            >
-                                              {a.user?.name?.charAt(0).toUpperCase() || a.user?.email?.charAt(0).toUpperCase()}
-                                            </div>
-                                          ))}
-                                          {task.assignees.length > 3 && (
-                                            <div className="w-5 h-5 rounded-full bg-slate-300 flex items-center justify-center text-[10px] font-medium border border-white">
-                                              +{task.assignees.length - 3}
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                      
-                                      {task.checklists && task.checklists.length > 0 && (
-                                        <span className="text-xs flex items-center gap-1 text-slate-500">
-                                          <CheckSquare className="w-3 h-3" />
-                                          {task.checklists.reduce((acc: number, c: any) => acc + (c.items?.filter((i: any) => i.isChecked).length || 0), 0)}/
-                                          {task.checklists.reduce((acc: number, c: any) => acc + (c.items?.length || 0), 0)}
-                                        </span>
-                                      )}
-                                      
-                                      {task._count && task._count.comments > 0 && (
-                                        <span className="text-xs flex items-center gap-1 text-slate-500">
-                                          <MessageSquare className="w-3 h-3" />
-                                          {task._count.comments}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))}
-                            {provided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                      
-                      {/* Add Task Form/Button */}
-                      {addingTaskToListId === list.id ? (
-                        <div className="mt-1">
-                          <textarea
-                            autoFocus
-                            placeholder="Enter a title for this card..."
-                            className="w-full p-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                            rows={3}
-                            value={newTaskTitle}
-                            onChange={e => setNewTaskTitle(e.target.value)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleAddTask(list.id);
-                              }
-                            }}
-                          />
-                          <div className="flex gap-2 mt-2">
-                            <button 
-                              onClick={() => handleAddTask(list.id)}
-                              className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm font-medium hover:bg-blue-700"
-                            >
-                              Add Card
-                            </button>
-                            <button 
-                              onClick={() => {
-                                setAddingTaskToListId(null);
-                                setNewTaskTitle('');
-                              }}
-                              className="text-slate-500 hover:text-slate-700 p-1.5"
-                            >
-                              <X className="w-5 h-5" />
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button 
-                          onClick={() => setAddingTaskToListId(list.id)}
-                          className="text-slate-500 hover:bg-slate-200 p-2 rounded text-left text-sm flex items-center gap-1 transition-colors"
-                        >
-                          <Plus className="w-4 h-4" /> Add a card
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </Draggable>
+                <TaskListComponent
+                  key={list.id}
+                  list={list}
+                  tasks={list.tasks || []}
+                  index={listIndex}
+                  allUsers={(board as any)?.workspace?.members?.map((m: any) => m.user) || []}
+                  onTaskClick={(task: any) => setSelectedTaskId(task.id)}
+                  onCreateTask={(listId: string, title: string) => handleAddTask(listId, title)}
+                  onUpdateList={handleUpdateList}
+                  onDeleteList={handleDeleteList}
+                  onClearTasks={handleClearTasks}
+                />
               ))}
               {provided.placeholder}
 
@@ -672,7 +600,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
         <TaskDetailModal
           taskId={selectedTaskId}
           userId={userId}
-          onClose={() => setSelectedTaskId(null)}
+          onClose={() => { setSelectedTaskId(null); loadBoard(); }}
           onTaskUpdated={loadBoard}
           onTaskDeleted={loadBoard}
         />

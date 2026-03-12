@@ -121,6 +121,7 @@ export async function loginWithGoogle(googleToken: string) {
     }
 
     // Check if user exists with this googleId
+    console.log("DB URL Check:", process.env.DATABASE_URL);
     let user = await prisma.user.findUnique({
       where: { googleId: googleId as string },
     });

@@ -147,7 +147,7 @@ export async function updateTaskDetails(
     });
 
     // Emit real-time event
-    emitToBoard(task.list.boardId, 'task:updated', { boardId: task.list.boardId, taskId, data });
+    emitToBoard(task.list.boardId, 'task:updated', { boardId: task.list.boardId, taskId, data }, userId);
 
     return { success: true, task };
   } catch (error) {
@@ -174,7 +174,7 @@ export async function addAssignee(taskId: string, assigneeUserId: string, curren
       data: { taskId, userId: assigneeUserId }
     });
 
-    emitToBoard(boardId, 'task:assignee-added', { boardId, taskId, userId: assigneeUserId });
+    emitToBoard(boardId, 'task:assignee-added', { boardId, taskId, userId: assigneeUserId }, currentUserId);
 
     // Create notification for the assigned user (skip self-assignment)
     if (assigneeUserId !== currentUserId) {
@@ -218,7 +218,7 @@ export async function removeAssignee(taskId: string, assigneeUserId: string, cur
       where: { taskId, userId: assigneeUserId }
     });
 
-    emitToBoard(boardId, 'task:assignee-removed', { boardId, taskId, userId: assigneeUserId });
+    emitToBoard(boardId, 'task:assignee-removed', { boardId, taskId, userId: assigneeUserId }, currentUserId);
 
     return { success: true };
   } catch (error) {
@@ -246,7 +246,7 @@ export async function addLabelToTask(taskId: string, labelId: string, userId: st
       include: { label: true }
     });
 
-    emitToBoard(boardId, 'task:label-added', { boardId, taskId, labelId, label: taskLabel.label });
+    emitToBoard(boardId, 'task:label-added', { boardId, taskId, labelId, label: taskLabel.label }, userId);
 
     return { success: true };
   } catch (error) {
@@ -269,7 +269,7 @@ export async function removeLabelFromTask(taskId: string, labelId: string, userI
       where: { taskId, labelId }
     });
 
-    emitToBoard(boardId, 'task:label-removed', { boardId, taskId, labelId });
+    emitToBoard(boardId, 'task:label-removed', { boardId, taskId, labelId }, userId);
 
     return { success: true };
   } catch (error) {
@@ -306,7 +306,7 @@ export async function createBoardLabel(boardId: string, name: string, color: str
       data: { boardId, name, color }
     });
 
-    emitToBoard(boardId, 'board:label-created', { boardId, label });
+    emitToBoard(boardId, 'board:label-created', { boardId, label }, userId);
 
     return { success: true, label };
   } catch (error) {
@@ -330,7 +330,7 @@ export async function updateBoardLabel(labelId: string, data: { name?: string; c
       data
     });
 
-    emitToBoard(label.boardId, 'board:label-updated', { boardId: label.boardId, label });
+    emitToBoard(label.boardId, 'board:label-updated', { boardId: label.boardId, label }, userId);
 
     return { success: true, label };
   } catch (error) {
@@ -351,7 +351,7 @@ export async function deleteBoardLabel(labelId: string, userId: string) {
 
     await prisma.boardLabel.delete({ where: { id: labelId } });
 
-    emitToBoard(label.boardId, 'board:label-deleted', { boardId: label.boardId, labelId });
+    emitToBoard(label.boardId, 'board:label-deleted', { boardId: label.boardId, labelId }, userId);
 
     return { success: true };
   } catch (error) {
@@ -379,7 +379,7 @@ export async function createChecklist(taskId: string, title: string, userId: str
       include: { items: true }
     });
 
-    emitToBoard(boardId, 'task:checklist-created', { boardId, taskId, checklist });
+    emitToBoard(boardId, 'task:checklist-created', { boardId, taskId, checklist }, userId);
 
     return { success: true, checklist };
   } catch (error) {
@@ -400,7 +400,7 @@ export async function deleteChecklist(checklistId: string, userId: string) {
 
     await prisma.checklist.delete({ where: { id: checklistId } });
 
-    emitToBoard(info.boardId, 'task:checklist-deleted', { boardId: info.boardId, taskId: info.taskId, checklistId });
+    emitToBoard(info.boardId, 'task:checklist-deleted', { boardId: info.boardId, taskId: info.taskId, checklistId }, userId);
 
     return { success: true };
   } catch (error) {
@@ -429,7 +429,7 @@ export async function addChecklistItem(checklistId: string, title: string, userI
       data: { checklistId, title, order: newOrder }
     });
 
-    emitToBoard(info.boardId, 'task:checklist-item-added', { boardId: info.boardId, taskId: info.taskId, checklistId, item });
+    emitToBoard(info.boardId, 'task:checklist-item-added', { boardId: info.boardId, taskId: info.taskId, checklistId, item }, userId);
 
     return { success: true, item };
   } catch (error) {
@@ -453,7 +453,7 @@ export async function updateChecklistItem(itemId: string, data: { title?: string
       data
     });
 
-    emitToBoard(info.boardId, 'task:checklist-item-updated', { boardId: info.boardId, taskId: info.taskId, checklistId: info.checklistId, itemId, data });
+    emitToBoard(info.boardId, 'task:checklist-item-updated', { boardId: info.boardId, taskId: info.taskId, checklistId: info.checklistId, itemId, data }, userId);
 
     return { success: true, item };
   } catch (error) {
@@ -474,7 +474,7 @@ export async function deleteChecklistItem(itemId: string, userId: string) {
 
     await prisma.checklistItem.delete({ where: { id: itemId } });
 
-    emitToBoard(info.boardId, 'task:checklist-item-deleted', { boardId: info.boardId, taskId: info.taskId, checklistId: info.checklistId, itemId });
+    emitToBoard(info.boardId, 'task:checklist-item-deleted', { boardId: info.boardId, taskId: info.taskId, checklistId: info.checklistId, itemId }, userId);
 
     return { success: true };
   } catch (error) {
@@ -499,7 +499,7 @@ export async function addComment(taskId: string, userId: string, text: string) {
     });
     
     if (boardId) {
-      emitToBoard(boardId, 'task:comment-added', { boardId, taskId, comment });
+      emitToBoard(boardId, 'task:comment-added', { boardId, taskId, comment }, userId);
     }
     
     return { success: true, comment };
@@ -524,7 +524,7 @@ export async function deleteComment(commentId: string, userId: string) {
     await prisma.comment.delete({ where: { id: commentId } });
     
     const boardId = comment.task.list.boardId;
-    emitToBoard(boardId, 'task:comment-deleted', { boardId, taskId: comment.taskId, commentId });
+    emitToBoard(boardId, 'task:comment-deleted', { boardId, taskId: comment.taskId, commentId }, userId);
     
     return { success: true };
   } catch (error) {
@@ -559,7 +559,7 @@ export async function updateBoardSettings(
       data
     });
 
-    emitToBoard(boardId, 'board:settings-changed', { boardId, data });
+    emitToBoard(boardId, 'board:settings-changed', { boardId, data }, userId);
 
     return { success: true, board };
   } catch (error) {

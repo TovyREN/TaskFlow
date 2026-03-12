@@ -112,13 +112,14 @@ model BoardLabel {
 }
 
 model TaskList {
-  id        String   @id @default(cuid())
-  title     String
-  order     Int
-  boardId   String
-  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  tasks     Task[]
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  title       String
+  order       Int
+  boardId     String
+  board       Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  headerColor String?
+  createdAt   DateTime @default(now())
 }
 
 model Task {

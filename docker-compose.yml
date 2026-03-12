@@ -15,7 +15,11 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        - DATABASE_URL=postgresql://user:password@db:5432/taskflow?schema=public
+        - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
     container_name: taskflow_app
     ports:
       - "3000:3000"
@@ -23,6 +27,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/taskflow?schema=public
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
     depends_on:
       - db
 

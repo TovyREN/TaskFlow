@@ -145,6 +145,8 @@ export async function updateWorkspace(
       data
     });
 
+    emitToWorkspace(workspaceId, 'workspace:updated', { workspaceId });
+
     return { success: true, workspace: updated };
   } catch (error) {
     console.error("Failed to update workspace:", error);
@@ -162,6 +164,9 @@ export async function deleteWorkspace(workspaceId: string, userId: string) {
     if (workspace.ownerId !== userId) {
       return { success: false, error: "Only the owner can delete a workspace" };
     }
+
+    // Emit before delete so clients still have the room
+    emitToWorkspace(workspaceId, 'workspace:deleted', { workspaceId });
 
     await prisma.workspace.delete({ where: { id: workspaceId } });
     return { success: true };
@@ -295,7 +300,7 @@ export async function createInvitation(
   try {
     const workspace = await prisma.workspace.findUnique({
       where: { id: workspaceId },
-      include: { members: true }
+      include: { members: { include: { user: true } } }
     });
 
     if (!workspace) return { success: false, error: "Workspace not found" };
@@ -357,6 +362,9 @@ export async function createInvitation(
         workspaceInvitationId: invitation.id,
       });
     }
+
+    // Emit to workspace so admin panel updates in realtime
+    emitToWorkspace(workspaceId, 'workspace:invitation-created', { workspaceId, invitation });
 
     return { success: true, invitation };
   } catch (error) {
@@ -484,6 +492,9 @@ export async function cancelInvitation(invitationId: string, userId: string) {
     }
 
     await prisma.workspaceInvitation.delete({ where: { id: invitationId } });
+
+    emitToWorkspace(invitation.workspaceId, 'workspace:invitation-cancelled', { workspaceId: invitation.workspaceId, invitationId });
+
     return { success: true };
   } catch (error) {
     console.error("Failed to cancel invitation:", error);

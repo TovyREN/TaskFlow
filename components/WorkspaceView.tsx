@@ -118,7 +118,12 @@ export default function WorkspaceView({ workspaceId, userId, onBack, onSelectBoa
     setIsPending(true);
     const result = await createBoardInWorkspace(workspaceId, newBoardTitle, userId, selectedBoardColor);
     if (result.success && result.board) {
-      // Socket will handle adding the board to state - no optimistic update
+      // Add the board to local state immediately
+      setWorkspace((prev: any) => {
+        if (!prev) return prev;
+        if (prev.boards?.some((b: any) => b.id === result.board.id)) return prev;
+        return { ...prev, boards: [result.board, ...(prev.boards || [])] };
+      });
       setNewBoardTitle('');
       setSelectedBoardColor(BOARD_COLORS[0]);
       setIsCreatingBoard(false);
@@ -327,7 +332,6 @@ export default function WorkspaceView({ workspaceId, userId, onBack, onSelectBoa
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
-                      
                       {menuOpenBoardId === board.id && (
                         <div className="absolute top-8 right-0 bg-white rounded-lg shadow-xl border border-slate-200 py-1 min-w-[140px] z-10">
                           <button

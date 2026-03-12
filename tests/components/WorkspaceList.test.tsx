@@ -178,6 +178,47 @@ describe('WorkspaceList Component', () => {
     expect(screen.getByText((_, el) => el?.textContent === '0 members' && el.tagName === 'SPAN')).toBeInTheDocument();
   });
 
+  it('closes modal when clicking overlay backdrop', () => {
+    render(
+      <WorkspaceList workspaces={workspaces} onSelectWorkspace={mockOnSelectWorkspace} onCreateWorkspace={mockOnCreateWorkspace} />
+    );
+    fireEvent.click(screen.getByText('New Workspace'));
+    expect(screen.getByText('Workspace Name')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Workspace Name').closest('.fixed')!);
+    expect(screen.queryByText('Workspace Name')).not.toBeInTheDocument();
+  });
+
+  it('closes modal when clicking X button', () => {
+    render(
+      <WorkspaceList workspaces={workspaces} onSelectWorkspace={mockOnSelectWorkspace} onCreateWorkspace={mockOnCreateWorkspace} />
+    );
+    fireEvent.click(screen.getByText('New Workspace'));
+    expect(screen.getByText('Workspace Name')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('icon-x'));
+    expect(screen.queryByText('Workspace Name')).not.toBeInTheDocument();
+  });
+
+  it('selects a different color swatch', () => {
+    render(
+      <WorkspaceList workspaces={workspaces} onSelectWorkspace={mockOnSelectWorkspace} onCreateWorkspace={mockOnCreateWorkspace} />
+    );
+    fireEvent.click(screen.getByText('New Workspace'));
+    // Click the second color swatch (there should be multiple round buttons)
+    const colorButtons = screen.getAllByRole('button').filter(btn => btn.className.includes('rounded-full'));
+    expect(colorButtons.length).toBeGreaterThan(1);
+    fireEvent.click(colorButtons[1]);
+    // Verify the ring class changed (selected color)
+    expect(colorButtons[1].className).toContain('ring-2');
+  });
+
+  it('opens create modal from empty state button', () => {
+    render(
+      <WorkspaceList workspaces={[]} onSelectWorkspace={mockOnSelectWorkspace} onCreateWorkspace={mockOnCreateWorkspace} />
+    );
+    fireEvent.click(screen.getByText('Create Workspace'));
+    expect(screen.getByText('Workspace Name')).toBeInTheDocument();
+  });
+
   it('does not submit form when name is whitespace only', async () => {
     render(
       <WorkspaceList

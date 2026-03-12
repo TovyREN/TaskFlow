@@ -269,6 +269,11 @@ describe('WorkspaceAdminPanel', () => {
     await waitFor(() => {
       expect(cancelInvitation).toHaveBeenCalledWith('inv1', 'user1');
     });
+
+    // After successful cancel, invitation should be removed from list (covers line 205)
+    await waitFor(() => {
+      expect(screen.queryByText('invite@test.com')).not.toBeInTheDocument();
+    });
   });
 
   it('shows delete workspace for owner', async () => {
@@ -480,6 +485,7 @@ describe('WorkspaceAdminPanel', () => {
     await waitFor(() => {
       expect(updateMemberRole).toHaveBeenCalledWith('ws1', 'user2', 'VIEWER', 'user1');
     });
+
   });
 
   it('removes a member with confirmation', async () => {
@@ -503,6 +509,11 @@ describe('WorkspaceAdminPanel', () => {
 
     await waitFor(() => {
       expect(removeMember).toHaveBeenCalledWith('ws1', 'user2', 'user1');
+    });
+
+    // After successful removal, member should be gone (covers line 173)
+    await waitFor(() => {
+      expect(screen.queryByText('member@test.com')).not.toBeInTheDocument();
     });
   });
 
@@ -639,5 +650,174 @@ describe('WorkspaceAdminPanel', () => {
         color: '#8b5cf6',
       }));
     });
+  });
+
+  it('socket handler for member-added reloads workspace', async () => {
+    const mockOn = jest.fn();
+    const { useSocket } = require('../../components/SocketProvider');
+    useSocket.mockReturnValue({
+      on: mockOn, off: jest.fn(), isConnected: true,
+      joinWorkspace: jest.fn(), leaveWorkspace: jest.fn(),
+    });
+
+    render(<WorkspaceAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Workspace Settings')).toBeInTheDocument());
+
+    const handler = mockOn.mock.calls.find((c: any[]) => c[0] === 'workspace:member-added');
+    expect(handler).toBeDefined();
+    getWorkspaceDetails.mockClear();
+    await waitFor(async () => { handler![1]({ workspaceId: 'ws1' }); });
+    expect(getWorkspaceDetails).toHaveBeenCalled();
+  });
+
+  it('socket handler for member-removed reloads workspace', async () => {
+    const mockOn = jest.fn();
+    const { useSocket } = require('../../components/SocketProvider');
+    useSocket.mockReturnValue({
+      on: mockOn, off: jest.fn(), isConnected: true,
+      joinWorkspace: jest.fn(), leaveWorkspace: jest.fn(),
+    });
+
+    render(<WorkspaceAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Workspace Settings')).toBeInTheDocument());
+
+    const handler = mockOn.mock.calls.find((c: any[]) => c[0] === 'workspace:member-removed');
+    expect(handler).toBeDefined();
+    getWorkspaceDetails.mockClear();
+    await waitFor(async () => { handler![1]({ workspaceId: 'ws1' }); });
+    expect(getWorkspaceDetails).toHaveBeenCalled();
+  });
+
+  it('socket handler for invitation-created reloads workspace', async () => {
+    const mockOn = jest.fn();
+    const { useSocket } = require('../../components/SocketProvider');
+    useSocket.mockReturnValue({
+      on: mockOn, off: jest.fn(), isConnected: true,
+      joinWorkspace: jest.fn(), leaveWorkspace: jest.fn(),
+    });
+
+    render(<WorkspaceAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Workspace Settings')).toBeInTheDocument());
+
+    const handler = mockOn.mock.calls.find((c: any[]) => c[0] === 'workspace:invitation-created');
+    expect(handler).toBeDefined();
+    getWorkspaceDetails.mockClear();
+    await waitFor(async () => { handler![1]({ workspaceId: 'ws1' }); });
+    expect(getWorkspaceDetails).toHaveBeenCalled();
+  });
+
+  it('socket handler ignores events for different workspace', async () => {
+    const mockOn = jest.fn();
+    const { useSocket } = require('../../components/SocketProvider');
+    useSocket.mockReturnValue({
+      on: mockOn, off: jest.fn(), isConnected: true,
+      joinWorkspace: jest.fn(), leaveWorkspace: jest.fn(),
+    });
+
+    render(<WorkspaceAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Workspace Settings')).toBeInTheDocument());
+
+    // Test member-added handler with wrong workspace
+    const memberAddedHandler = mockOn.mock.calls.find((c: any[]) => c[0] === 'workspace:member-added');
+    const memberRemovedHandler = mockOn.mock.calls.find((c: any[]) => c[0] === 'workspace:member-removed');
+    const invitationHandler = mockOn.mock.calls.find((c: any[]) => c[0] === 'workspace:invitation-created');
+
+    getWorkspaceDetails.mockClear();
+    memberAddedHandler![1]({ workspaceId: 'other-ws' });
+    memberRemovedHandler![1]({ workspaceId: 'other-ws' });
+    invitationHandler![1]({ workspaceId: 'other-ws' });
+    expect(getWorkspaceDetails).not.toHaveBeenCalled();
+  });
+
+  it('handles updateMemberRole failure', async () => {
+    const { updateMemberRole } = require('../../app/actions/workspaceActions');
+    updateMemberRole.mockResolvedValue({ success: false, error: 'Failed' });
+
+    render(<WorkspaceAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Workspace Settings')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Members/));
+    const memberEmail = screen.getByText('member@test.com');
+    const memberRow = memberEmail.closest('[class*="flex"]')!.parentElement!;
+    const roleBtn = memberRow.querySelector('button:not([disabled])');
+    fireEvent.click(roleBtn!);
+
+    await waitFor(() => {
+      const viewerOption = screen.getByText('Can only view boards and tasks (read-only)');
+      fireEvent.click(viewerOption.closest('button')!);
+    });
+
+    await waitFor(() => {
+      expect(updateMemberRole).toHaveBeenCalled();
+    });
+    // Member role should NOT have changed since success was false
+    expect(screen.getByText('member@test.com')).toBeInTheDocument();
+  });
+
+  it('handles removeMember failure (member still present)', async () => {
+    const { removeMember } = require('../../app/actions/workspaceActions');
+    removeMember.mockResolvedValue({ success: false });
+    window.confirm = jest.fn().mockReturnValue(true);
+
+    render(<WorkspaceAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Workspace Settings')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Members/));
+    const removeBtn = screen.getByTitle('Remove member');
+    fireEvent.click(removeBtn);
+
+    await waitFor(() => {
+      expect(removeMember).toHaveBeenCalled();
+    });
+    // Member should still be present
+    expect(screen.getByText('member@test.com')).toBeInTheDocument();
+  });
+
+  it('handles cancelInvitation failure (invitation still present)', async () => {
+    cancelInvitation.mockResolvedValue({ success: false });
+
+    render(<WorkspaceAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Workspace Settings')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Invitations'));
+    const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => {
+      expect(cancelInvitation).toHaveBeenCalled();
+    });
+    // Invitation should still be visible
+    expect(screen.getByText('invite@test.com')).toBeInTheDocument();
+  });
+
+  it('changes invite role dropdown', async () => {
+    render(<WorkspaceAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Workspace Settings')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Invitations'));
+
+    // Find the select element for invite role
+    const selects = screen.getAllByRole('combobox');
+    const roleSelect = selects.find(s => (s as HTMLSelectElement).value === 'MEMBER');
+    expect(roleSelect).toBeDefined();
+    fireEvent.change(roleSelect!, { target: { value: 'VIEWER' } });
+    expect(roleSelect).toHaveValue('VIEWER');
+  });
+
+  it('switches back to settings tab and edits description', async () => {
+    render(<WorkspaceAdminPanel {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Workspace Settings')).toBeInTheDocument());
+
+    // Switch to Members tab first
+    fireEvent.click(screen.getByText(/Members/));
+    expect(screen.getByText('member@test.com')).toBeInTheDocument();
+
+    // Switch back to Settings tab (covers line 265)
+    fireEvent.click(screen.getByText('General'));
+
+    // Edit description (covers line 324)
+    const descTextarea = screen.getByPlaceholderText("What's this workspace for?");
+    fireEvent.change(descTextarea, { target: { value: 'Updated description' } });
+    expect(descTextarea).toHaveValue('Updated description');
   });
 });

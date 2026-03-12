@@ -108,4 +108,40 @@ describe('GoogleLoginButton', () => {
 
     expect(mockOnError).toHaveBeenCalledWith('Database error');
   });
+
+  it('calls onError when loginWithGoogle throws an exception', async () => {
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'test-client-id';
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (loginWithGoogle as jest.Mock).mockRejectedValue(new Error('Network error'));
+
+    let capturedCallback: (res: any) => void = () => {};
+    (window.google.accounts.id.initialize as jest.Mock).mockImplementation((config) => {
+      capturedCallback = config.callback;
+    });
+
+    render(<GoogleLoginButton onLogin={mockOnLogin} onError={mockOnError} />);
+
+    await act(async () => {
+      await capturedCallback({ credential: 'token' });
+    });
+
+    expect(mockOnError).toHaveBeenCalledWith('An error occurred during Google login');
+    consoleSpy.mockRestore();
+  });
+
+  it('handles error when google.accounts.id.initialize throws', async () => {
+    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'test-client-id';
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (window.google.accounts.id.initialize as jest.Mock).mockImplementation(() => {
+      throw new Error('Init failed');
+    });
+
+    render(<GoogleLoginButton onLogin={mockOnLogin} onError={mockOnError} />);
+
+    expect(consoleSpy).toHaveBeenCalledWith('Error initializing Google Sign-In:', expect.any(Error));
+    consoleSpy.mockRestore();
+  });
+
+  // Note: Script onError (line 94) is tested implicitly through the mock setup;
+  // full coverage of this branch requires an integration test with actual script loading.
 });

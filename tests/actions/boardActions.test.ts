@@ -10,6 +10,9 @@ import {
   moveTaskToList,
   reorderLists,
   getWorkspaceBoards,
+  updateList,
+  deleteList,
+  clearListTasks,
 } from '@/app/actions/boardActions';
 
 // Typed mock references
@@ -22,6 +25,7 @@ const mockTaskList = prisma.taskList as unknown as {
   findFirst: jest.Mock;
   create: jest.Mock;
   update: jest.Mock;
+  delete: jest.Mock;
 };
 const mockTask = prisma.task as unknown as {
   findUnique: jest.Mock;
@@ -29,6 +33,7 @@ const mockTask = prisma.task as unknown as {
   create: jest.Mock;
   update: jest.Mock;
   delete: jest.Mock;
+  deleteMany: jest.Mock;
 };
 const mockWorkspace = prisma.workspace as unknown as {
   findUnique: jest.Mock;
@@ -51,6 +56,11 @@ function boardWithRole(role: 'ADMIN' | 'MEMBER' | 'VIEWER', userId = 'user1') {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 // ─── getBoardDetails ─────────────────────────────────────────────────
@@ -82,12 +92,10 @@ describe('getBoardDetails', () => {
     expect(result).toBeNull();
   });
 
-  it('returns null on error', async () => {
+  it('throws on error', async () => {
     mockBoard.findUnique.mockRejectedValue(new Error('DB error'));
 
-    const result = await getBoardDetails('board1');
-
-    expect(result).toBeNull();
+    await expect(getBoardDetails('board1')).rejects.toThrow('DB error');
   });
 });
 
@@ -635,5 +643,163 @@ describe('getWorkspaceBoards - branch coverage', () => {
     const result = await getWorkspaceBoards('ws1', 'user1');
 
     expect(result).toEqual([]);
+  });
+});
+
+// ─── updateList ─────────────────────────────────────────────────────
+
+describe('updateList', () => {
+  beforeEach(() => jest.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => jest.restoreAllMocks());
+
+  it('updates list successfully', async () => {
+    mockTaskList.findUnique.mockResolvedValue({ boardId: 'board1' });
+    mockBoard.findUnique.mockResolvedValue(boardWithRole('ADMIN'));
+    const updated = { id: 'list1', title: 'New Title', tasks: [] };
+    mockTaskList.update.mockResolvedValue(updated);
+
+    const result = await updateList('list1', { title: 'New Title' }, 'user1');
+
+    expect(result).toEqual({ success: true, list: updated });
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'list:updated', expect.anything(), 'user1');
+  });
+
+  it('returns error when list not found', async () => {
+    mockTaskList.findUnique.mockResolvedValue(null);
+
+    const result = await updateList('bad', { title: 'x' }, 'user1');
+
+    expect(result).toEqual({ success: false, error: 'List not found' });
+  });
+
+  it('returns error when no access', async () => {
+    mockTaskList.findUnique.mockResolvedValue({ boardId: 'board1' });
+    mockBoard.findUnique.mockResolvedValue(null);
+
+    const result = await updateList('list1', { title: 'x' }, 'user1');
+
+    expect(result).toEqual({ success: false, error: "You don't have access to this board" });
+  });
+
+  it('returns error for VIEWER role', async () => {
+    mockTaskList.findUnique.mockResolvedValue({ boardId: 'board1' });
+    mockBoard.findUnique.mockResolvedValue(boardWithRole('VIEWER'));
+
+    const result = await updateList('list1', { title: 'x' }, 'user1');
+
+    expect(result).toEqual({ success: false, error: 'Viewers cannot update lists' });
+  });
+
+  it('handles errors gracefully', async () => {
+    mockTaskList.findUnique.mockRejectedValue(new Error('DB error'));
+
+    const result = await updateList('list1', { title: 'x' }, 'user1');
+
+    expect(result).toEqual({ success: false, error: 'Failed to update list' });
+  });
+});
+
+// ─── deleteList ─────────────────────────────────────────────────────
+
+describe('deleteList', () => {
+  beforeEach(() => jest.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => jest.restoreAllMocks());
+
+  it('deletes list successfully', async () => {
+    mockTaskList.findUnique.mockResolvedValue({ boardId: 'board1' });
+    mockBoard.findUnique.mockResolvedValue(boardWithRole('ADMIN'));
+    mockTaskList.delete.mockResolvedValue({});
+
+    const result = await deleteList('list1', 'user1');
+
+    expect(result).toEqual({ success: true });
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'list:deleted', expect.anything(), 'user1');
+  });
+
+  it('returns error when list not found', async () => {
+    mockTaskList.findUnique.mockResolvedValue(null);
+
+    const result = await deleteList('bad', 'user1');
+
+    expect(result).toEqual({ success: false, error: 'List not found' });
+  });
+
+  it('returns error when no access', async () => {
+    mockTaskList.findUnique.mockResolvedValue({ boardId: 'board1' });
+    mockBoard.findUnique.mockResolvedValue(null);
+
+    const result = await deleteList('list1', 'user1');
+
+    expect(result).toEqual({ success: false, error: "You don't have access to this board" });
+  });
+
+  it('returns error for VIEWER role', async () => {
+    mockTaskList.findUnique.mockResolvedValue({ boardId: 'board1' });
+    mockBoard.findUnique.mockResolvedValue(boardWithRole('VIEWER'));
+
+    const result = await deleteList('list1', 'user1');
+
+    expect(result).toEqual({ success: false, error: 'Viewers cannot delete lists' });
+  });
+
+  it('handles errors gracefully', async () => {
+    mockTaskList.findUnique.mockRejectedValue(new Error('DB error'));
+
+    const result = await deleteList('list1', 'user1');
+
+    expect(result).toEqual({ success: false, error: 'Failed to delete list' });
+  });
+});
+
+// ─── clearListTasks ─────────────────────────────────────────────────
+
+describe('clearListTasks', () => {
+  beforeEach(() => jest.spyOn(console, 'error').mockImplementation(() => {}));
+  afterEach(() => jest.restoreAllMocks());
+
+  it('clears tasks successfully', async () => {
+    mockTaskList.findUnique.mockResolvedValue({ boardId: 'board1' });
+    mockBoard.findUnique.mockResolvedValue(boardWithRole('ADMIN'));
+    mockTask.deleteMany.mockResolvedValue({ count: 5 });
+
+    const result = await clearListTasks('list1', 'user1');
+
+    expect(result).toEqual({ success: true });
+    expect(mockTask.deleteMany).toHaveBeenCalledWith({ where: { listId: 'list1' } });
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'list:updated', expect.anything(), 'user1');
+  });
+
+  it('returns error when list not found', async () => {
+    mockTaskList.findUnique.mockResolvedValue(null);
+
+    const result = await clearListTasks('bad', 'user1');
+
+    expect(result).toEqual({ success: false, error: 'List not found' });
+  });
+
+  it('returns error when no access', async () => {
+    mockTaskList.findUnique.mockResolvedValue({ boardId: 'board1' });
+    mockBoard.findUnique.mockResolvedValue(null);
+
+    const result = await clearListTasks('list1', 'user1');
+
+    expect(result).toEqual({ success: false, error: "You don't have access to this board" });
+  });
+
+  it('returns error for VIEWER role', async () => {
+    mockTaskList.findUnique.mockResolvedValue({ boardId: 'board1' });
+    mockBoard.findUnique.mockResolvedValue(boardWithRole('VIEWER'));
+
+    const result = await clearListTasks('list1', 'user1');
+
+    expect(result).toEqual({ success: false, error: 'Viewers cannot clear tasks' });
+  });
+
+  it('handles errors gracefully', async () => {
+    mockTaskList.findUnique.mockRejectedValue(new Error('DB error'));
+
+    const result = await clearListTasks('list1', 'user1');
+
+    expect(result).toEqual({ success: false, error: 'Failed to clear tasks' });
   });
 });

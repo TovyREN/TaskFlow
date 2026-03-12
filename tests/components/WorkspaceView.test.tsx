@@ -17,13 +17,13 @@ const mockOn = jest.fn();
 const mockOff = jest.fn();
 
 jest.mock('../../components/SocketProvider', () => ({
-  useSocket: () => ({
+  useSocket: jest.fn(() => ({
     joinWorkspace: mockJoinWorkspace,
     leaveWorkspace: mockLeaveWorkspace,
     on: mockOn,
     off: mockOff,
     isConnected: true,
-  }),
+  })),
 }));
 
 // Mock lucide-react icons
@@ -706,5 +706,38 @@ describe('WorkspaceView', () => {
     });
 
     expect(screen.getByText('Board One')).toBeInTheDocument();
+  });
+
+  it('starts polling when socket is disconnected', async () => {
+    jest.useFakeTimers();
+    const { useSocket: mockUseSocket } = require('../../components/SocketProvider');
+    mockUseSocket.mockReturnValue({
+      joinWorkspace: mockJoinWorkspace,
+      leaveWorkspace: mockLeaveWorkspace,
+      on: mockOn,
+      off: mockOff,
+      isConnected: false,
+    });
+
+    render(<WorkspaceView {...defaultProps} />);
+    await waitFor(() => expect(screen.getByText('Test Workspace')).toBeInTheDocument());
+
+    mockGetWorkspaceDetails.mockClear();
+
+    await act(async () => {
+      jest.advanceTimersByTime(10000);
+    });
+
+    expect(mockGetWorkspaceDetails).toHaveBeenCalled();
+    jest.useRealTimers();
+
+    // Restore
+    mockUseSocket.mockReturnValue({
+      joinWorkspace: mockJoinWorkspace,
+      leaveWorkspace: mockLeaveWorkspace,
+      on: mockOn,
+      off: mockOff,
+      isConnected: true,
+    });
   });
 });

@@ -18,6 +18,11 @@ const mockEmitToUser = emitToUser as jest.Mock;
 describe('notificationActions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   // ── createNotification ──────────────────────────────────────────────

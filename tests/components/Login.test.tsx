@@ -22,10 +22,15 @@ jest.mock('next/script', () => ({
 // 3. Mock GoogleLoginButton
 jest.mock('../../components/GoogleLoginButton', () => ({
   __esModule: true,
-  default: ({ onLogin }: any) => (
-    <button data-testid="google-btn" onClick={() => onLogin({ id: 'google-123' })}>
-      Google Login
-    </button>
+  default: ({ onLogin, onError }: any) => (
+    <div>
+      <button data-testid="google-btn" onClick={() => onLogin({ id: 'google-123' })}>
+        Google Login
+      </button>
+      <button data-testid="google-error-btn" onClick={() => onError?.('Google auth failed')}>
+        Trigger Error
+      </button>
+    </div>
   ),
 }));
 
@@ -123,4 +128,5 @@ describe('Login Component', () => {
     render(<Login onLogin={mockOnLogin} />);
     expect(screen.getByText(/Connecting to Google\.\.\./i)).toBeInTheDocument();
   });
+
 });

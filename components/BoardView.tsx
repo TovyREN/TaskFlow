@@ -43,18 +43,25 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
 
   const { joinBoard, leaveBoard, on, off, isConnected } = useSocket();
 
-  const loadBoard = async () => {
-    const data = await getBoardDetails(boardId);
-    if (data) {
-      setBoard(data as unknown as DBBoard);
+  const loadBoard = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getBoardDetails(boardId);
+      if (data) {
+        setBoard(data as unknown as DBBoard);
+      } else {
+        setBoard(null);
+      }
+    } catch {
+      setBoard(null);
     }
     setLoading(false);
-  };
+  }, [boardId]);
 
   // Fetch Board Data on Mount
   useEffect(() => {
     loadBoard();
-  }, [boardId]);
+  }, [loadBoard]);
 
   // Load workspace boards
   useEffect(() => {
@@ -285,6 +292,15 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
     };
   }, [boardId, workspaceId, isConnected, joinBoard, leaveBoard, on, off, onBack]);
 
+  // Polling fallback when sockets are not connected (e.g. Vercel deployment)
+  useEffect(() => {
+    if (isConnected) return; // Sockets work, no need to poll
+    const interval = setInterval(() => {
+      loadBoard();
+    }, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [isConnected, loadBoard]);
+
   const handleAddList = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListTitle.trim() || !board) return;
@@ -458,7 +474,15 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
   }
 
   if (!board) {
-    return <div className="p-8 text-center">Board not found. <button onClick={onBack} className="text-blue-600 underline">Go back</button></div>;
+    return (
+      <div className="p-8 text-center space-y-2">
+        <p>Board not found.</p>
+        <div className="space-x-4">
+          <button onClick={loadBoard} className="text-blue-600 underline">Retry</button>
+          <button onClick={onBack} className="text-blue-600 underline">Go back</button>
+        </div>
+      </div>
+    );
   }
 
   const boardBackground = board.backgroundImage 

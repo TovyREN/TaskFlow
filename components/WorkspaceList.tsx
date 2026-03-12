@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Plus, X, Users, Grid, Crown, Shield, Eye, MoreVertical, Trash2, Settings, UserPlus, ChevronRight } from 'lucide-react';
-import { MemberRole } from '../types';
+import { Plus, X, Users, Grid, ChevronRight } from 'lucide-react';
 
 interface WorkspaceListProps {
   workspaces: any[];
@@ -36,14 +35,6 @@ export default function WorkspaceList({
     setSelectedColor(WORKSPACE_COLORS[0]);
     setIsCreating(false);
     setIsPending(false);
-  };
-
-  const getRoleIcon = (role: MemberRole) => {
-    switch (role) {
-      case 'ADMIN': return <Crown className="w-3 h-3 text-yellow-500" />;
-      case 'MEMBER': return <Shield className="w-3 h-3 text-blue-500" />;
-      case 'VIEWER': return <Eye className="w-3 h-3 text-gray-500" />;
-    }
   };
 
   return (

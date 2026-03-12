@@ -241,7 +241,6 @@ describe('BoardView', () => {
   it('shows loading then board with lists and tasks', async () => {
     render(<BoardView {...defaultProps} />);
 
-    // Loading spinner should be present initially (Loader2 renders as svg)
     expect(screen.queryByText('Test Board')).not.toBeInTheDocument();
 
     await waitFor(() => {

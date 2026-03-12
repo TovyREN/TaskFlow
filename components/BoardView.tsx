@@ -43,6 +43,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
 
   const { joinBoard, leaveBoard, on, off, isConnected } = useSocket();
 
+  // Full load with spinner (initial load only)
   const loadBoard = useCallback(async () => {
     setLoading(true);
     try {
@@ -56,6 +57,18 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
       setBoard(null);
     }
     setLoading(false);
+  }, [boardId]);
+
+  // Silent refresh: updates board data without showing spinner or closing modals
+  const refreshBoard = useCallback(async () => {
+    try {
+      const data = await getBoardDetails(boardId);
+      if (data) {
+        setBoard(data as unknown as DBBoard);
+      }
+    } catch {
+      // Silently ignore errors on background refresh
+    }
   }, [boardId]);
 
   // Fetch Board Data on Mount
@@ -163,8 +176,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
     // Handle task moved
     const handleTaskMoved = (data: any) => {
       if (data.boardId !== boardId) return;
-      // Full reload to get proper order
-      loadBoard();
+      refreshBoard();
     };
 
     // Handle task reordered
@@ -198,19 +210,19 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
     // Handle board settings changed
     const handleBoardSettingsChanged = (data: any) => {
       if (data.boardId !== boardId) return;
-      loadBoard(); // Reload to get new background/title
+      refreshBoard();
     };
 
     // Handle label changes
-    const handleLabelCreated = () => loadBoard();
-    const handleLabelUpdated = () => loadBoard();
-    const handleLabelDeleted = () => loadBoard();
+    const handleLabelCreated = () => refreshBoard();
+    const handleLabelUpdated = () => refreshBoard();
+    const handleLabelDeleted = () => refreshBoard();
 
     // Handle task detail changes (labels, assignees, checklists, comments)
     // These trigger a reload to update task card badges
     const handleTaskDetailChange = (data: any) => {
       if (data.boardId !== boardId) return;
-      loadBoard();
+      refreshBoard();
     };
 
     // Register event listeners
@@ -290,17 +302,17 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
       off('board:created', handleBoardCreatedInWorkspace);
       off('board:deleted', handleBoardDeletedFromWorkspace);
     };
-  }, [boardId, workspaceId, isConnected, joinBoard, leaveBoard, on, off, onBack]);
+  }, [boardId, workspaceId, isConnected, joinBoard, leaveBoard, on, off, onBack, refreshBoard]);
 
   // Polling fallback when sockets are not connected (e.g. Vercel deployment)
-  // Skip polling when a task modal is open to avoid closing it on re-render
+  // Uses silent refresh to avoid closing modals or showing spinners
   useEffect(() => {
-    if (isConnected || selectedTaskId) return;
+    if (isConnected) return;
     const interval = setInterval(() => {
-      loadBoard();
-    }, 10000);
+      refreshBoard();
+    }, 30000); // 30s - less aggressive, just for other users' changes
     return () => clearInterval(interval);
-  }, [isConnected, loadBoard, selectedTaskId]);
+  }, [isConnected, refreshBoard]);
 
   const handleAddList = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -350,7 +362,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
     const result = await updateList(updatedList.id, { title: updatedList.title, headerColor: updatedList.headerColor }, userId);
     if (!result.success) {
       alert(result.error || 'Failed to update list');
-      loadBoard();
+      refreshBoard();
     }
   };
 
@@ -362,7 +374,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
     const result = await deleteList(listId, userId);
     if (!result.success) {
       alert(result.error || 'Failed to delete list');
-      loadBoard();
+      refreshBoard();
     }
   };
 
@@ -377,7 +389,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
     const result = await clearListTasks(listId, userId);
     if (!result.success) {
       alert(result.error || 'Failed to clear tasks');
-      loadBoard();
+      refreshBoard();
     }
   };
 
@@ -405,8 +417,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
       const result = await reorderLists(board.id, newLists.map(l => l.id), userId);
       if (result.error) {
         alert(result.error);
-        // Reload board on error
-        loadBoard();
+        refreshBoard();
       }
       return;
     }
@@ -435,7 +446,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
       const result = await reorderTasksInList(sourceList.id, newTasks.map((t: any) => t.id), userId);
       if (result.error) {
         alert(result.error);
-        loadBoard();
+        refreshBoard();
       }
     } else {
       // Moving to a different list
@@ -458,7 +469,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
       const moveResult = await moveTaskToList(movedTask.id, destList.id, destination.index, userId);
       if (moveResult.error) {
         alert(moveResult.error);
-        loadBoard();
+        refreshBoard();
         return;
       }
       await reorderTasksInList(sourceList.id, sourceTasks.map((t: any) => t.id), userId);
@@ -625,9 +636,9 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
         <TaskDetailModal
           taskId={selectedTaskId}
           userId={userId}
-          onClose={() => { setSelectedTaskId(null); loadBoard(); }}
-          onTaskUpdated={loadBoard}
-          onTaskDeleted={loadBoard}
+          onClose={() => { setSelectedTaskId(null); refreshBoard(); }}
+          onTaskUpdated={refreshBoard}
+          onTaskDeleted={refreshBoard}
         />
       )}
 
@@ -637,7 +648,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
           boardId={boardId}
           userId={userId}
           onClose={() => setShowAdminPanel(false)}
-          onBoardUpdated={loadBoard}
+          onBoardUpdated={refreshBoard}
         />
       )}
     </div>

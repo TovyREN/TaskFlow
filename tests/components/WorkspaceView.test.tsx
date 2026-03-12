@@ -725,7 +725,7 @@ describe('WorkspaceView', () => {
     mockGetWorkspaceDetails.mockClear();
 
     await act(async () => {
-      jest.advanceTimersByTime(10000);
+      jest.advanceTimersByTime(30000);
     });
 
     expect(mockGetWorkspaceDetails).toHaveBeenCalled();

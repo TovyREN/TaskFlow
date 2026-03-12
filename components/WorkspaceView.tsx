@@ -111,15 +111,30 @@ export default function WorkspaceView({ workspaceId, userId, onBack, onSelectBoa
     };
   }, [workspaceId, isConnected, joinWorkspace, leaveWorkspace, on, off, userId, onBack]);
 
+  // Silent refresh: updates data without showing spinner or closing modals
+  const refreshWorkspace = async () => {
+    try {
+      const [data, role] = await Promise.all([
+        getWorkspaceDetails(workspaceId, userId),
+        getUserRole(workspaceId, userId)
+      ]);
+      if (data) {
+        setWorkspace(data);
+        setUserRole(role);
+      }
+    } catch {
+      // Silently ignore errors on background refresh
+    }
+  };
+
   // Polling fallback when sockets are not connected (e.g. Vercel deployment)
-  // Skip polling when user is interacting (creating board or has menu open)
   useEffect(() => {
-    if (isConnected || isCreatingBoard || menuOpenBoardId) return;
+    if (isConnected) return;
     const interval = setInterval(() => {
-      loadWorkspace();
-    }, 10000);
+      refreshWorkspace();
+    }, 30000); // 30s - just for other users' changes
     return () => clearInterval(interval);
-  }, [isConnected, workspaceId, userId, isCreatingBoard, menuOpenBoardId]);
+  }, [isConnected, workspaceId, userId]);
 
   const handleCreateBoard = async (e: React.FormEvent) => {
     e.preventDefault();

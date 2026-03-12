@@ -332,7 +332,6 @@ export default function WorkspaceView({ workspaceId, userId, onBack, onSelectBoa
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
-                      
                       {menuOpenBoardId === board.id && (
                         <div className="absolute top-8 right-0 bg-white rounded-lg shadow-xl border border-slate-200 py-1 min-w-[140px] z-10">
                           <button

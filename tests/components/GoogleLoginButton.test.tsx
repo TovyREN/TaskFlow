@@ -83,7 +83,6 @@ describe('GoogleLoginButton', () => {
 
     render(<GoogleLoginButton onLogin={mockOnLogin} />);
 
-    // Simulate Google callback
     await act(async () => {
       await capturedCallback({ credential: 'valid_token' });
     });

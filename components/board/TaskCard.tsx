@@ -1,16 +1,20 @@
 import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-import { CheckSquare, AlignLeft, Edit2 } from 'lucide-react';
-import { Task, User } from '../../types';
+import { CheckSquare, MessageSquare, Clock, Edit2 } from 'lucide-react';
 
 interface TaskCardProps {
-  task: Task;
+  task: any;
   index: number;
-  allUsers: User[];
-  onClick: (task: Task) => void;
+  allUsers: any[];
+  onClick: (task: any) => void;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, index, allUsers, onClick }) => {
+  const labels = task.labels || [];
+  const assignees = task.assignees || [];
+  const checklists = task.checklists || [];
+  const commentCount = task._count?.comments || 0;
+
   return (
     <Draggable draggableId={task.id} index={index}>
       {(provided, snapshot) => (
@@ -24,53 +28,67 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, index, allUsers, onClick }) =
             snapshot.isDragging ? 'rotate-2 scale-105 shadow-xl ring-2 ring-indigo-500 z-50' : ''
           }`}
         >
-          {task.tags.length > 0 && (
+          {labels.length > 0 && (
             <div className="flex gap-1 mb-2 flex-wrap">
-              {task.tags.map(tag => (
-                <span key={tag.id} className={`text-[10px] px-2 py-0.5 rounded-full font-medium text-white bg-${tag.color}`}>
-                  {tag.name}
-                </span>
+              {labels.slice(0, 4).map((tl: any) => (
+                <span
+                  key={tl.labelId || tl.id}
+                  className="h-2 w-10 rounded-full"
+                  style={{ backgroundColor: tl.label?.color || tl.color }}
+                />
               ))}
             </div>
           )}
-          
+
           <p className="text-sm font-medium text-slate-800 break-words">{task.title}</p>
-          
+
           <div className="flex items-center justify-between mt-2 min-h-[16px]">
             <div className="flex gap-2 text-slate-400">
-              {task.checklists.length > 0 && (
+              {task.dueDate && (
+                <span className={`text-xs flex items-center gap-1 px-1.5 py-0.5 rounded ${
+                  new Date(task.dueDate) < new Date()
+                    ? 'bg-red-100 text-red-600'
+                    : 'bg-slate-100 text-slate-500'
+                }`}>
+                  <Clock className="w-3 h-3" />
+                  {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </span>
+              )}
+              {checklists.length > 0 && (
                 <div className="flex items-center gap-1 text-xs" title="Checklist items">
                   <CheckSquare className="w-3 h-3" />
                   <span>
-                    {task.checklists.reduce((acc, cl) => acc + cl.items.filter(i => i.isChecked).length, 0)}/
-                    {task.checklists.reduce((acc, cl) => acc + cl.items.length, 0)}
+                    {checklists.reduce((acc: number, cl: any) => acc + (cl.items?.filter((i: any) => i.isChecked).length || 0), 0)}/
+                    {checklists.reduce((acc: number, cl: any) => acc + (cl.items?.length || 0), 0)}
                   </span>
                 </div>
               )}
-              {(task.comments.length > 0 || task.description) && (
+              {commentCount > 0 && (
                 <div className="flex items-center gap-1 text-xs">
-                  <AlignLeft className="w-3 h-3" />
-                  {task.comments.length > 0 && <span>{task.comments.length}</span>}
+                  <MessageSquare className="w-3 h-3" />
+                  <span>{commentCount}</span>
                 </div>
               )}
             </div>
-            
+
             <div className="flex items-center gap-1">
               <Edit2 className="w-3 h-3 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity mr-1" />
-              {task.assignees.length > 0 && (
+              {assignees.length > 0 && (
                 <div className="flex -space-x-1">
-                  {task.assignees.map(uid => {
-                    const u = allUsers.find(user => user.id === uid);
-                    return u ? (
-                      <img 
-                        key={uid} 
-                        src={u.avatar} 
-                        alt={u.name}
-                        className="w-5 h-5 rounded-full border border-white" 
-                        title={u.name}
-                      />
-                    ) : null;
-                  })}
+                  {assignees.slice(0, 3).map((a: any) => (
+                    <div
+                      key={a.userId || a}
+                      className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-[10px] font-medium border border-white"
+                      title={a.user?.name || a.user?.email || ''}
+                    >
+                      {a.user?.name?.charAt(0).toUpperCase() || a.user?.email?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                  ))}
+                  {assignees.length > 3 && (
+                    <div className="w-5 h-5 rounded-full bg-slate-300 flex items-center justify-center text-[10px] font-medium border border-white">
+                      +{assignees.length - 3}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

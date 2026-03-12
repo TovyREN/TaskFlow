@@ -295,7 +295,7 @@ export default function WorkspaceAdminPanel({
             Invitations
             {workspace.invitations?.length > 0 && (
               <span className="bg-blue-100 text-blue-600 text-xs px-2 py-0.5 rounded-full">
-                {workspace.invitations.length}
+                {workspace.invitations?.length}
               </span>
             )}
           </button>

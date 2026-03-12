@@ -135,7 +135,7 @@ describe('updateTaskDetails', () => {
 
     const result = await updateTaskDetails('task1', { title: 'Updated' }, 'user1');
     expect(result).toEqual({ success: true, task: updatedTask });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:updated', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:updated', expect.any(Object), 'user1');
   });
 
   it('should fail when task not found', async () => {
@@ -167,7 +167,7 @@ describe('addAssignee', () => {
     const result = await addAssignee('task1', 'user2', 'user1');
     expect(result).toEqual({ success: true });
     expect(mockTaskAssignee.create).toHaveBeenCalled();
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:assignee-added', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:assignee-added', expect.any(Object), 'user1');
 
     const { createNotification } = require('../../app/actions/notificationActions');
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({
@@ -230,7 +230,7 @@ describe('addLabelToTask', () => {
 
     const result = await addLabelToTask('task1', 'label1', 'user1');
     expect(result).toEqual({ success: true });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:label-added', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:label-added', expect.any(Object), 'user1');
   });
 
   it('should deny VIEWER role', async () => {
@@ -253,7 +253,7 @@ describe('removeLabelFromTask', () => {
 
     const result = await removeLabelFromTask('task1', 'label1', 'user1');
     expect(result).toEqual({ success: true });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:label-removed', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:label-removed', expect.any(Object), 'user1');
   });
 });
 
@@ -287,7 +287,7 @@ describe('createBoardLabel', () => {
 
     const result = await createBoardLabel('board1', 'Feature', 'blue', 'user1');
     expect(result).toEqual({ success: true, label });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'board:label-created', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'board:label-created', expect.any(Object), 'user1');
   });
 
   it('should deny VIEWER role', async () => {
@@ -329,7 +329,7 @@ describe('deleteBoardLabel', () => {
 
     const result = await deleteBoardLabel('l1', 'user1');
     expect(result).toEqual({ success: true });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'board:label-deleted', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'board:label-deleted', expect.any(Object), 'user1');
   });
 
   it('should fail when label not found', async () => {
@@ -359,7 +359,7 @@ describe('createChecklist', () => {
 
     const result = await createChecklist('task1', 'My Checklist', 'user1');
     expect(result).toEqual({ success: true, checklist });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:checklist-created', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:checklist-created', expect.any(Object), 'user1');
   });
 
   it('should fail when task not found', async () => {
@@ -380,7 +380,7 @@ describe('deleteChecklist', () => {
 
     const result = await deleteChecklist('cl1', 'user1');
     expect(result).toEqual({ success: true });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:checklist-deleted', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:checklist-deleted', expect.any(Object), 'user1');
   });
 
   it('should fail when checklist not found', async () => {
@@ -443,7 +443,7 @@ describe('updateChecklistItem', () => {
 
     const result = await updateChecklistItem('item1', { isChecked: true }, 'user1');
     expect(result).toEqual({ success: true, item: updated });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:checklist-item-updated', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:checklist-item-updated', expect.any(Object), 'user1');
   });
 
   it('should fail when item not found', async () => {
@@ -464,7 +464,7 @@ describe('deleteChecklistItem', () => {
 
     const result = await deleteChecklistItem('item1', 'user1');
     expect(result).toEqual({ success: true });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:checklist-item-deleted', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:checklist-item-deleted', expect.any(Object), 'user1');
   });
 
   it('should deny VIEWER role', async () => {
@@ -487,7 +487,7 @@ describe('addComment', () => {
 
     const result = await addComment('task1', 'user1', 'Hello');
     expect(result).toEqual({ success: true, comment });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:comment-added', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:comment-added', expect.any(Object), 'user1');
     // Should NOT call board.findUnique (no role check)
     expect(mockBoard.findUnique).not.toHaveBeenCalled();
   });
@@ -516,7 +516,7 @@ describe('deleteComment', () => {
 
     const result = await deleteComment('c1', 'user1');
     expect(result).toEqual({ success: true });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:comment-deleted', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:comment-deleted', expect.any(Object), 'user1');
   });
 
   it('should reject deleting other users comment', async () => {
@@ -548,7 +548,7 @@ describe('updateBoardSettings', () => {
 
     const result = await updateBoardSettings('board1', { title: 'New Title' }, 'user1');
     expect(result).toEqual({ success: true, board: updatedBoard });
-    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'board:settings-changed', expect.any(Object));
+    expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'board:settings-changed', expect.any(Object), 'user1');
   });
 
   it('should deny MEMBER role', async () => {

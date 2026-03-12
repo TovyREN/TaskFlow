@@ -300,7 +300,7 @@ export async function createInvitation(
   try {
     const workspace = await prisma.workspace.findUnique({
       where: { id: workspaceId },
-      include: { members: true }
+      include: { members: { include: { user: true } } }
     });
 
     if (!workspace) return { success: false, error: "Workspace not found" };

@@ -114,7 +114,7 @@ describe('createList', () => {
     expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'list:created', {
       boardId: 'board1',
       list: createdList,
-    });
+    }, 'user1');
   });
 
   it('returns error when board not found (no access)', async () => {
@@ -171,7 +171,7 @@ describe('createTask', () => {
       boardId: 'board1',
       listId: 'list1',
       task: createdTask,
-    });
+    }, 'user1');
   });
 
   it('returns error when list not found', async () => {
@@ -217,7 +217,7 @@ describe('updateTask', () => {
     expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'task:updated', {
       boardId: 'board1',
       task: updatedTask,
-    });
+    }, 'user1');
   });
 
   it('returns error when task not found', async () => {
@@ -252,7 +252,7 @@ describe('deleteTask', () => {
       boardId: 'board1',
       taskId: 'task1',
       listId: 'list1',
-    });
+    }, 'user1');
   });
 
   it('returns error when task not found', async () => {
@@ -286,7 +286,7 @@ describe('reorderTasksInList', () => {
       boardId: 'board1',
       listId: 'list1',
       taskIds,
-    });
+    }, 'user1');
   });
 
   it('returns error when list not found', async () => {
@@ -322,7 +322,7 @@ describe('moveTaskToList', () => {
       targetListId: 'list2',
       newOrder: 0,
       task: movedTask,
-    });
+    }, 'user1');
   });
 
   it('returns error when target list or source task not found', async () => {
@@ -353,7 +353,7 @@ describe('reorderLists', () => {
     expect(mockEmitToBoard).toHaveBeenCalledWith('board1', 'list:reordered', {
       boardId: 'board1',
       listIds,
-    });
+    }, 'user1');
   });
 
   it('returns error for VIEWER role', async () => {

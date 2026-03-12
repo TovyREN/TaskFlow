@@ -600,7 +600,7 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
         <TaskDetailModal
           taskId={selectedTaskId}
           userId={userId}
-          onClose={() => setSelectedTaskId(null)}
+          onClose={() => { setSelectedTaskId(null); loadBoard(); }}
           onTaskUpdated={loadBoard}
           onTaskDeleted={loadBoard}
         />

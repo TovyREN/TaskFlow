@@ -41,12 +41,16 @@ export function SocketProvider({ children, userId }: SocketProviderProps) {
     }
 
     // Connect to socket server
+    // On Vercel (serverless), socket.io won't work - use transports: ['polling', 'websocket']
+    // to fail fast and let polling fallback in components handle real-time updates
     const socketInstance = io({
       path: '/socket.io',
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 3,
+      reconnectionDelay: 2000,
+      timeout: 5000,
+      transports: ['polling', 'websocket'],
     });
 
     socketRef.current = socketInstance;

@@ -293,13 +293,14 @@ export default function BoardView({ boardId, userId, workspaceId, onBack, onSwit
   }, [boardId, workspaceId, isConnected, joinBoard, leaveBoard, on, off, onBack]);
 
   // Polling fallback when sockets are not connected (e.g. Vercel deployment)
+  // Skip polling when a task modal is open to avoid closing it on re-render
   useEffect(() => {
-    if (isConnected) return; // Sockets work, no need to poll
+    if (isConnected || selectedTaskId) return;
     const interval = setInterval(() => {
       loadBoard();
-    }, 10000); // Poll every 10 seconds
+    }, 10000);
     return () => clearInterval(interval);
-  }, [isConnected, loadBoard]);
+  }, [isConnected, loadBoard, selectedTaskId]);
 
   const handleAddList = async (e: React.FormEvent) => {
     e.preventDefault();

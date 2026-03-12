@@ -112,13 +112,14 @@ export default function WorkspaceView({ workspaceId, userId, onBack, onSelectBoa
   }, [workspaceId, isConnected, joinWorkspace, leaveWorkspace, on, off, userId, onBack]);
 
   // Polling fallback when sockets are not connected (e.g. Vercel deployment)
+  // Skip polling when user is interacting (creating board or has menu open)
   useEffect(() => {
-    if (isConnected) return;
+    if (isConnected || isCreatingBoard || menuOpenBoardId) return;
     const interval = setInterval(() => {
       loadWorkspace();
     }, 10000);
     return () => clearInterval(interval);
-  }, [isConnected, workspaceId, userId]);
+  }, [isConnected, workspaceId, userId, isCreatingBoard, menuOpenBoardId]);
 
   const handleCreateBoard = async (e: React.FormEvent) => {
     e.preventDefault();

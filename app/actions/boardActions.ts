@@ -112,6 +112,85 @@ export async function createList(boardId: string, title: string, userId: string)
   }
 }
 
+// Update a list (rename, change header color)
+export async function updateList(listId: string, data: { title?: string; headerColor?: string }, userId: string) {
+  try {
+    const list = await prisma.taskList.findUnique({
+      where: { id: listId },
+      select: { boardId: true }
+    });
+
+    if (!list) return { success: false, error: "List not found" };
+
+    const role = await getUserRoleInBoard(list.boardId, userId);
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot update lists" };
+
+    const updated = await prisma.taskList.update({
+      where: { id: listId },
+      data,
+      include: { tasks: true }
+    });
+
+    emitToBoard(list.boardId, 'list:updated', { boardId: list.boardId, list: updated });
+
+    return { success: true, list: updated };
+  } catch (error) {
+    console.error("Failed to update list:", error);
+    return { success: false, error: "Failed to update list" };
+  }
+}
+
+// Delete a list and all its tasks
+export async function deleteList(listId: string, userId: string) {
+  try {
+    const list = await prisma.taskList.findUnique({
+      where: { id: listId },
+      select: { boardId: true }
+    });
+
+    if (!list) return { success: false, error: "List not found" };
+
+    const role = await getUserRoleInBoard(list.boardId, userId);
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot delete lists" };
+
+    await prisma.taskList.delete({ where: { id: listId } });
+
+    emitToBoard(list.boardId, 'list:deleted', { boardId: list.boardId, listId });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete list:", error);
+    return { success: false, error: "Failed to delete list" };
+  }
+}
+
+// Clear all tasks in a list
+export async function clearListTasks(listId: string, userId: string) {
+  try {
+    const list = await prisma.taskList.findUnique({
+      where: { id: listId },
+      select: { boardId: true }
+    });
+
+    if (!list) return { success: false, error: "List not found" };
+
+    const role = await getUserRoleInBoard(list.boardId, userId);
+    if (!role) return { success: false, error: "You don't have access to this board" };
+    if (role === 'VIEWER') return { success: false, error: "Viewers cannot clear tasks" };
+
+    await prisma.task.deleteMany({ where: { listId } });
+
+    emitToBoard(list.boardId, 'list:updated', { boardId: list.boardId, list: { ...list, id: listId, tasks: [] } });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to clear list tasks:", error);
+    return { success: false, error: "Failed to clear tasks" };
+  }
+}
+
 // Create a new task in a list
 export async function createTask(listId: string, title: string, userId: string) {
   try {

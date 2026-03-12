@@ -10,6 +10,10 @@ const mockMoveTaskToList = jest.fn();
 const mockReorderLists = jest.fn();
 const mockGetWorkspaceBoards = jest.fn();
 
+const mockUpdateList = jest.fn();
+const mockDeleteList = jest.fn();
+const mockClearListTasks = jest.fn();
+
 jest.mock('../../app/actions/boardActions', () => ({
   getBoardDetails: (...args: any[]) => mockGetBoardDetails(...args),
   createList: (...args: any[]) => mockCreateList(...args),
@@ -18,6 +22,9 @@ jest.mock('../../app/actions/boardActions', () => ({
   moveTaskToList: (...args: any[]) => mockMoveTaskToList(...args),
   reorderLists: (...args: any[]) => mockReorderLists(...args),
   getWorkspaceBoards: (...args: any[]) => mockGetWorkspaceBoards(...args),
+  updateList: (...args: any[]) => mockUpdateList(...args),
+  deleteList: (...args: any[]) => mockDeleteList(...args),
+  clearListTasks: (...args: any[]) => mockClearListTasks(...args),
 }));
 
 jest.mock('../../components/SocketProvider', () => ({
@@ -62,6 +69,79 @@ jest.mock('../../components/board/GanttView', () => ({
 jest.mock('../../components/board/BoardTabs', () => ({
   __esModule: true,
   default: () => <div data-testid="board-tabs" />,
+}));
+
+// Mock TaskList component to render essential elements for testing
+jest.mock('../../components/board/TaskList', () => ({
+  __esModule: true,
+  default: ({ list, tasks, onTaskClick, onCreateTask, onUpdateList, onDeleteList, onClearTasks }: any) => {
+    const [isCreating, setIsCreating] = React.useState(false);
+    const [taskTitle, setTaskTitle] = React.useState('');
+    return (
+      <div data-testid={`tasklist-${list.id}`}>
+        <h4>{list.title}</h4>
+        {tasks.length === 0 && <p>No tasks yet</p>}
+        {tasks.map((task: any) => (
+          <div key={task.id} onClick={() => onTaskClick(task)}>
+            {task.labels && task.labels.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {task.labels.slice(0, 3).map((tl: any) => (
+                  <span key={tl.labelId} className="h-2 w-10 rounded-full" style={{ backgroundColor: tl.label?.color }} />
+                ))}
+              </div>
+            )}
+            <span>{task.title}</span>
+            {task.dueDate && (
+              <span className={new Date(task.dueDate) < new Date() ? 'bg-red-100 text-red-600' : 'bg-slate-100 text-slate-500'}>
+                {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </span>
+            )}
+            {task.assignees && task.assignees.length > 0 && (
+              <div>
+                {task.assignees.slice(0, 3).map((a: any) => (
+                  <div key={a.userId} title={a.user?.name || a.user?.email}>
+                    {a.user?.name?.charAt(0).toUpperCase() || a.user?.email?.charAt(0).toUpperCase()}
+                  </div>
+                ))}
+                {task.assignees.length > 3 && <div>+{task.assignees.length - 3}</div>}
+              </div>
+            )}
+            {task.checklists && task.checklists.length > 0 && (
+              <span>
+                {task.checklists.reduce((acc: number, c: any) => acc + (c.items?.filter((i: any) => i.isChecked).length || 0), 0)}/
+                {task.checklists.reduce((acc: number, c: any) => acc + (c.items?.length || 0), 0)}
+              </span>
+            )}
+            {task._count && task._count.comments > 0 && <span>{task._count.comments}</span>}
+          </div>
+        ))}
+        <button data-testid={`update-list-${list.id}`} onClick={() => onUpdateList({ ...list, title: 'Renamed List' })}>Update List</button>
+        <button data-testid={`delete-list-${list.id}`} onClick={() => onDeleteList(list.id)}>Delete List</button>
+        <button data-testid={`clear-tasks-${list.id}`} onClick={() => onClearTasks(list.id)}>Clear Tasks</button>
+        {isCreating ? (
+          <div>
+            <textarea
+              placeholder="Enter a title for this card..."
+              value={taskTitle}
+              onChange={(e: any) => setTaskTitle(e.target.value)}
+              onKeyDown={(e: any) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (taskTitle.trim()) { onCreateTask(list.id, taskTitle); setTaskTitle(''); setIsCreating(false); }
+                }
+              }}
+            />
+            <div>
+              <button onClick={() => { if (taskTitle.trim()) { onCreateTask(list.id, taskTitle); setTaskTitle(''); setIsCreating(false); } }}>Add Card</button>
+              <button onClick={() => { setIsCreating(false); setTaskTitle(''); }}>Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={() => setIsCreating(true)}>Add a card</button>
+        )}
+      </div>
+    );
+  },
 }));
 
 // Mock DnD - render children and expose onDragEnd
@@ -153,6 +233,9 @@ describe('BoardView', () => {
     mockReorderTasksInList.mockResolvedValue({ success: true });
     mockMoveTaskToList.mockResolvedValue({ success: true });
     mockReorderLists.mockResolvedValue({ success: true });
+    mockUpdateList.mockResolvedValue({ success: true });
+    mockDeleteList.mockResolvedValue({ success: true });
+    mockClearListTasks.mockResolvedValue({ success: true });
   });
 
   it('shows loading then board with lists and tasks', async () => {
@@ -1618,6 +1701,78 @@ describe('BoardView', () => {
       expect(defaultProps.onBack).not.toHaveBeenCalled();
     });
 
+    it('handles list:updated event', async () => {
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Board')).toBeInTheDocument();
+      });
+
+      act(() => {
+        eventHandlers['list:updated']({
+          boardId: 'board1',
+          list: { id: 'list1', title: 'Updated Title', tasks: [] },
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Updated Title')).toBeInTheDocument();
+      });
+    });
+
+    it('ignores list:updated event for different board', async () => {
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Board')).toBeInTheDocument();
+      });
+
+      act(() => {
+        eventHandlers['list:updated']({
+          boardId: 'other-board',
+          list: { id: 'list1', title: 'Should Not Update' },
+        });
+      });
+
+      expect(screen.queryByText('Should Not Update')).not.toBeInTheDocument();
+    });
+
+    it('handles list:deleted event', async () => {
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      act(() => {
+        eventHandlers['list:deleted']({
+          boardId: 'board1',
+          listId: 'list1',
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.queryByText('To Do')).not.toBeInTheDocument();
+      });
+    });
+
+    it('ignores list:deleted event for different board', async () => {
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      act(() => {
+        eventHandlers['list:deleted']({
+          boardId: 'other-board',
+          listId: 'list1',
+        });
+      });
+
+      expect(screen.getByText('To Do')).toBeInTheDocument();
+    });
+
     it('cleans up socket listeners on unmount', async () => {
       const { unmount } = render(<BoardView {...defaultProps} />);
 
@@ -1629,11 +1784,162 @@ describe('BoardView', () => {
 
       expect(mockLeaveBoard).toHaveBeenCalledWith('board1');
       expect(mockOff).toHaveBeenCalledWith('list:created', expect.any(Function));
+      expect(mockOff).toHaveBeenCalledWith('list:updated', expect.any(Function));
+      expect(mockOff).toHaveBeenCalledWith('list:deleted', expect.any(Function));
       expect(mockOff).toHaveBeenCalledWith('task:created', expect.any(Function));
       expect(mockOff).toHaveBeenCalledWith('task:updated', expect.any(Function));
       expect(mockOff).toHaveBeenCalledWith('task:deleted', expect.any(Function));
       expect(mockOff).toHaveBeenCalledWith('board:created', expect.any(Function));
       expect(mockOff).toHaveBeenCalledWith('board:deleted', expect.any(Function));
+    });
+  });
+
+  describe('list management handlers', () => {
+    it('handleUpdateList calls updateList action', async () => {
+      mockUpdateList.mockResolvedValue({ success: true, list: { id: 'list1', title: 'Renamed List' } });
+
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('update-list-list1'));
+
+      await waitFor(() => {
+        expect(mockUpdateList).toHaveBeenCalledWith('list1', { title: 'Renamed List', headerColor: undefined }, 'user1');
+      });
+    });
+
+    it('handleUpdateList shows alert on failure and reloads', async () => {
+      mockUpdateList.mockResolvedValue({ success: false, error: 'Update failed' });
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('update-list-list1'));
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith('Update failed');
+      });
+
+      alertSpy.mockRestore();
+    });
+
+    it('handleDeleteList calls deleteList action with confirmation', async () => {
+      mockDeleteList.mockResolvedValue({ success: true });
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
+
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('delete-list-list1'));
+
+      await waitFor(() => {
+        expect(mockDeleteList).toHaveBeenCalledWith('list1', 'user1');
+      });
+
+      (window.confirm as jest.Mock).mockRestore();
+    });
+
+    it('handleDeleteList cancelled by user does nothing', async () => {
+      jest.spyOn(window, 'confirm').mockReturnValue(false);
+
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('delete-list-list1'));
+
+      expect(mockDeleteList).not.toHaveBeenCalled();
+
+      (window.confirm as jest.Mock).mockRestore();
+    });
+
+    it('handleDeleteList shows alert on failure and reloads', async () => {
+      mockDeleteList.mockResolvedValue({ success: false, error: 'Delete failed' });
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('delete-list-list1'));
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith('Delete failed');
+      });
+
+      alertSpy.mockRestore();
+      (window.confirm as jest.Mock).mockRestore();
+    });
+
+    it('handleClearTasks calls clearListTasks action with confirmation', async () => {
+      mockClearListTasks.mockResolvedValue({ success: true });
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
+
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('clear-tasks-list1'));
+
+      await waitFor(() => {
+        expect(mockClearListTasks).toHaveBeenCalledWith('list1', 'user1');
+      });
+
+      (window.confirm as jest.Mock).mockRestore();
+    });
+
+    it('handleClearTasks cancelled by user does nothing', async () => {
+      jest.spyOn(window, 'confirm').mockReturnValue(false);
+
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('clear-tasks-list1'));
+
+      expect(mockClearListTasks).not.toHaveBeenCalled();
+
+      (window.confirm as jest.Mock).mockRestore();
+    });
+
+    it('handleClearTasks shows alert on failure and reloads', async () => {
+      mockClearListTasks.mockResolvedValue({ success: false, error: 'Clear failed' });
+      jest.spyOn(window, 'confirm').mockReturnValue(true);
+      const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
+
+      render(<BoardView {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('To Do')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('clear-tasks-list1'));
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith('Clear failed');
+      });
+
+      alertSpy.mockRestore();
+      (window.confirm as jest.Mock).mockRestore();
     });
   });
 });

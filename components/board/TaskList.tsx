@@ -178,7 +178,7 @@ const TaskList: React.FC<TaskListProps> = ({
             </div>
 
             {/* Tasks Area */}
-            <Droppable droppableId={list.id} type="task">
+            <Droppable droppableId={list.id} type="TASK">
               {(provided, snapshot) => (
                 <div
                   ref={provided.innerRef}

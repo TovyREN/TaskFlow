@@ -6,41 +6,41 @@
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         CLIENT (Navigateur)                         │
 │                                                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────────┐ │
-│  │  React       │  │  Socket.IO   │  │  localStorage /           │ │
-│  │  Components  │  │  Client      │  │  sessionStorage           │ │
-│  │  (Next.js)   │  │              │  │  (session utilisateur)    │ │
-│  └──────┬───────┘  └──────┬───────┘  └───────────────────────────┘ │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────────┐  │
+│  │  React       │  │  Socket.IO   │  │  localStorage /           │  │
+│  │  Components  │  │  Client      │  │  sessionStorage           │  │
+│  │  (Next.js)   │  │              │  │  (session utilisateur)    │  │
+│  └──────┬───────┘  └──────┬───────┘  └───────────────────────────┘  │
 │         │                  │                                        │
 └─────────┼──────────────────┼────────────────────────────────────────┘
           │ Server Actions   │ WebSocket (ws://)
           │ (HTTP POST)      │
 ┌─────────┼──────────────────┼────────────────────────────────────────┐
 │         ▼                  ▼            SERVEUR (Node.js)           │
-│  ┌─────────────────────────────────────────────────────────┐       │
-│  │                  server.js (HTTP + Socket.IO)            │       │
-│  │                                                          │       │
-│  │  ┌────────────────────┐    ┌──────────────────────────┐ │       │
-│  │  │   Next.js App      │    │   Socket.IO Server       │ │       │
-│  │  │   Router           │    │                          │ │       │
-│  │  │                    │    │  Rooms:                   │ │       │
-│  │  │  ┌──────────────┐  │    │  ├─ user:{userId}        │ │       │
-│  │  │  │Server Actions│  │    │  ├─ workspace:{id}       │ │       │
-│  │  │  │              │──┼────┼─►│  └─ board:{id}         │ │       │
-│  │  │  │ auth         │  │    │                          │ │       │
-│  │  │  │ workspace    │  │    │  global.io               │ │       │
-│  │  │  │ board        │  │    └──────────────────────────┘ │       │
-│  │  │  │ card         │  │                                  │       │
-│  │  │  │ notification │  │                                  │       │
-│  │  │  └──────┬───────┘  │                                  │       │
-│  │  └─────────┼──────────┘                                  │       │
-│  └────────────┼─────────────────────────────────────────────┘       │
+│  ┌─────────────────────────────────────────────────────────┐        │
+│  │                  server.js (HTTP + Socket.IO)           │        │
+│  │                                                         │        │
+│  │  ┌────────────────────┐    ┌──────────────────────────┐ │        │
+│  │  │   Next.js App      │    │   Socket.IO Server       │ │        │
+│  │  │   Router           │    │                          │ │        │
+│  │  │                    │    │  Rooms:                  │ │        │
+│  │  │  ┌──────────────┐  │    │  ├─ user:{userId}        │ │        │
+│  │  │  │Server Actions│  │    │  ├─ workspace:{id}       │ │        │
+│  │  │  │              │──┼────┼─►│  └─ board:{id}        │ │        │
+│  │  │  │ auth         │  │    │                          │ │        │
+│  │  │  │ workspace    │  │    │  global.io               │ │        │
+│  │  │  │ board        │  │    └──────────────────────────┘ │        │
+│  │  │  │ card         │  │                                 │        │
+│  │  │  │ notification │  │                                 │        │
+│  │  │  └──────┬───────┘  │                                 │        │
+│  │  └─────────┼──────────┘                                 │        │
+│  └────────────┼────────────────────────────────────────────┘        │
 │               │                                                     │
 │               ▼                                                     │
-│  ┌─────────────────────┐                                           │
-│  │   Prisma ORM        │                                           │
-│  │   (lib/prisma.ts)   │                                           │
-│  └──────────┬──────────┘                                           │
+│  ┌─────────────────────┐                                            │
+│  │   Prisma ORM        │                                            │
+│  │   (lib/prisma.ts)   │                                            │
+│  └──────────┬──────────┘                                            │
 │             │                                                       │
 └─────────────┼───────────────────────────────────────────────────────┘
               │ TCP (port 5432)
@@ -56,7 +56,7 @@
 
 ## Stack technique
 
-| Couche       | Technologie                   | Version    |
+| Couche      | Technologie                   | Version    |
 |-------------|-------------------------------|------------|
 | Frontend    | Next.js (React + TypeScript)  | App Router |
 | UI          | Tailwind CSS + Lucide Icons   | -          |
@@ -95,19 +95,19 @@
 │                    Appels Server Actions                         │
 │                              │                                   │
 │  ┌────────────────────────────────────────────────────────────┐  │
-│  │                    COUCHE MÉTIER (Server Actions)           │  │
+│  │                    COUCHE MÉTIER (Server Actions)          │  │
 │  │                                                            │  │
 │  │  app/actions/                                              │  │
 │  │  ├─ authActions.ts          Authentification               │  │
-│  │  ├─ workspaceActions.ts     Workspaces, Membres, Invit.   │  │
-│  │  ├─ boardActions.ts         Boards, Listes, Tâches        │  │
-│  │  ├─ cardActions.ts          Détails tâche, Labels, etc.   │  │
-│  │  └─ notificationActions.ts  Notifications                 │  │
+│  │  ├─ workspaceActions.ts     Workspaces, Membres, Invit.    │  │
+│  │  ├─ boardActions.ts         Boards, Listes, Tâches         │  │
+│  │  ├─ cardActions.ts          Détails tâche, Labels, etc.    │  │
+│  │  └─ notificationActions.ts  Notifications                  │  │
 │  │                                                            │  │
 │  │  lib/                                                      │  │
-│  │  ├─ socket.ts               Émission événements temps réel│  │
-│  │  ├─ password.ts             Hashing bcrypt                │  │
-│  │  └─ passwordValidation.ts   Validation force mot de passe │  │
+│  │  ├─ socket.ts               Émission événements temps réel │  │
+│  │  ├─ password.ts             Hashing bcrypt                 │  │
+│  │  └─ passwordValidation.ts   Validation force mot de passe  │  │
 │  └────────────────────────────────────────────────────────────┘  │
 │                              │                                   │
 │                        Prisma Client                             │
@@ -116,9 +116,9 @@
 │  │                    COUCHE DONNÉES                          │  │
 │  │                                                            │  │
 │  │  prisma/                                                   │  │
-│  │  ├─ schema.prisma           Modèles de données            │  │
+│  │  ├─ schema.prisma           Modèles de données             │  │
 │  │  ├─ migrations/             Historique des migrations      │  │
-│  │  └─ seed.ts                 Données initiales             │  │
+│  │  └─ seed.ts                 Données initiales              │  │
 │  │                                                            │  │
 │  │  lib/prisma.ts              Singleton Prisma Client        │  │
 │  └────────────────────────────────────────────────────────────┘  │
@@ -131,7 +131,7 @@
 
 ```
 ┌──────────────┐       ┌─────────────────────┐       ┌──────────────┐
-│    User      │       │   WorkspaceMember    │       │  Workspace   │
+│    User      │       │   WorkspaceMember   │       │  Workspace   │
 ├──────────────┤       ├─────────────────────┤       ├──────────────┤
 │ id       PK  │◄──┐   │ id              PK  │   ┌──►│ id       PK  │
 │ email    UQ  │   ├───│ userId          FK  │   │   │ name         │
@@ -139,11 +139,11 @@
 │ password     │   │   │ role (enum)         │       │ color        │
 │ googleId UQ  │   │   │ joinedAt            │       │ ownerId  FK  │──┐
 │ googleImage  │   │   └─────────────────────┘       │ createdAt    │  │
-│ createdAt    │   │   UQ(workspaceId, userId)        │ updatedAt    │  │
-└──────┬───────┘   │                                  └──────┬───────┘  │
-       │           │                                         │          │
+│ createdAt    │   │   UQ(workspaceId, userId)       │ updatedAt    │  │
+└──────┬───────┘   │                                 └──────┬───────┘  │
+       │           │                                        │          │
        │           │   ┌─────────────────────┐              │          │
-       │           │   │ WorkspaceInvitation  │              │          │
+       │           │   │ WorkspaceInvitation  │             │          │
        │           │   ├─────────────────────┤              │          │
        │           ├───│ inviterId       FK  │              │          │
        │           ├───│ inviteeId       FK  │              │          │
@@ -154,8 +154,8 @@
        │           │   │ expiresAt           │                         │
        │           │   └──────────┬──────────┘                         │
        │           │   UQ(workspaceId, inviteeEmail)                   │
-       │           │              │                                     │
-       │           │              │                                     │
+       │           │              │                                    │
+       │           │              │                                    │
        │           │   ┌──────────┴──────────┐                         │
        │           │   │   Notification      │                         │
        │           │   ├─────────────────────┤                         │
@@ -167,18 +167,18 @@
        │           │   │ message             │  │                      │
        │           │   │ isRead              │  │                      │
        │           │   └─────────────────────┘  │                      │
-       │           │                             │                      │
-       │◄──────────┘                             │                      │
-       │                                         │                      │
+       │           │                            │                      │
+       │◄──────────┘                            │                      │
+       │                                        │                      │
        │   Workspace ──► Board ──► TaskList ──► Task                   │
-       │                                         │                      │
-       │           ┌────────────────┐            │                      │
-       │           │     Board      │            │     Owner            │
-       │           ├────────────────┤            │     relation         │
-       │           │ id         PK  │            │         │            │
-       │           │ title          │            │         │            │
-       │           │ color          │            │         │            │
-       │           │ backgroundImage│            │         └────────────┘
+       │                                         │                     │
+       │           ┌────────────────┐            │                     │
+       │           │     Board      │            │     Owner           │
+       │           ├────────────────┤            │     relation        │
+       │           │ id         PK  │            │         │           │
+       │           │ title          │            │         │           │
+       │           │ color          │            │         │           │
+       │           │ backgroundImage│            │         └───────────┘
        │           │ workspaceId FK │            │
        │           └───────┬────────┘            │
        │                   │                     │
@@ -212,13 +212,13 @@
        │  │              │  │                  │
        │  ▼              │  ▼                  ▼
        │  ┌───────────┐  │  ┌───────────┐  ┌───────────────┐
-       │  │TaskAssignee│ │  │ TaskLabel  │  │   Comment     │
+       │  │TaskAssignee│ │  │ TaskLabel │  │   Comment     │
        │  ├───────────┤  │  ├───────────┤  ├───────────────┤
-       ├──│ userId  FK │  │  │ taskId FK │  │ id        PK  │
-       │  │ taskId  FK │  │  │ labelId FK│  │ text          │
+       ├──│ userId  FK│  │  │ taskId FK │  │ id        PK  │
+       │  │ taskId  FK│  │  │ labelId FK│  │ text          │
        │  └───────────┘  │  └─────┬─────┘  │ userId    FK  │──►User
-       │  UQ(task,user)  │  UQ(task,label)  │ taskId    FK  │
-       │                 │        │         └───────────────┘
+       │  UQ(task,user)  │  UQ(task,label) │ taskId    FK  │
+       │                 │        │        └───────────────┘
        │                 │        ▼
        │                 │  ┌────────────────┐
        │                 │  │  BoardLabel    │
